@@ -21,7 +21,7 @@ The project also runs three experiments to investigate how quantum noise affects
 ## Tech Stack
 
 | Layer | Technology |
-|---|---|
+| --- | --- |
 | Frontend | React |
 | Backend API | FastAPI (Python) |
 | Image Processing | OpenCV |
@@ -46,6 +46,7 @@ Responsible for the most critical part of the project — building and testing t
 - Build the Grover diffusion operator
 - Test and verify the quantum solver produces correct solutions
 - Document how the quantum circuit works
+- **Quantum mentor:** walk every teammate through the circuit so all five members can read and run it
 
 ---
 
@@ -61,6 +62,7 @@ Responsible for running the three quantum experiments and comparing the results.
 - Analyze the probability of measuring valid solutions
 - Write the experimental comparison section of the final report
 - Work closely with Somnang to use the quantum solver as the base
+- **Quantum practice:** implement one experiment script end-to-end and show the team how each noise setting changes the result
 
 ---
 
@@ -75,6 +77,7 @@ Responsible for reading and extracting Sudoku puzzles from uploaded photos.
 - Output a structured 4×4 grid with given numbers and empty cells marked
 - Allow users to manually correct any misrecognized numbers
 - Connect the parsed puzzle output to the backend API
+- **Quantum touch:** turn the recognized 4×4 grid into the solver's input format (2 qubits per cell) and verify givens are encoded correctly
 
 ---
 
@@ -91,6 +94,7 @@ Responsible for the backend server that connects all components together.
 - Connect the image processing module (Nike) to the quantum solver (Somnang)
 - Handle errors and validate inputs
 - Test all API endpoints
+- **Quantum touch:** execute the Grover circuit server-side, return measurement counts, and expose shot count for the results view
 
 ---
 
@@ -107,6 +111,7 @@ Responsible for the user interface and making sure all parts of the project work
 - Integrate the frontend with the backend API (Taingchay)
 - Coordinate final integration testing across all modules
 - Manage the GitHub repository structure and pull requests
+- **Quantum touch:** visualize measurement probability histograms for ideal vs. noisy vs. mitigated runs
 
 ---
 
@@ -128,10 +133,32 @@ User uploads Sudoku photo
 
 ---
 
+## Quantum Practice — All Members
+
+QuSud is a quantum computing course project, so **every member must touch the quantum part**, not only Somnang and Rayu. Each person keeps their primary role and also owns one slice of the Grover-based 4×4 Sudoku solver, so the whole team can read, run, and debug the circuit.
+
+| Member | Primary role | Quantum part they own |
+| --- | --- | --- |
+| Somnang | Quantum Algorithm Engineer | Grover circuit, oracle, diffusion operator |
+| Rayu | Experiments & Error Mitigation | Ideal / noisy / mitigated experiment scripts |
+| Nike | Image Processing Engineer | Encode the recognized 4×4 grid into qubit initialization |
+| Taingchay | Backend API Developer | Execute the circuit from FastAPI and return measurement counts |
+| Reach | Frontend & Integrator | Plot measurement probabilities and integrate quantum results into the UI |
+
+### Shared practice ladder
+
+1. Run the ideal Grover circuit for a fixed 4×4 puzzle and read the solution bitstring.
+2. Add the FakeKolkata noise model and compare the valid-solution probability.
+3. Apply Mitiq zero-noise extrapolation and record the change.
+4. Change one given cell and confirm the oracle still rejects invalid grids.
+5. Time each run and note qubit count, circuit depth, and shots.
+
+---
+
 ## Three Experiments
 
 | Experiment | Setup | Goal |
-|---|---|---|
+| --- | --- | --- |
 | 1 – Ideal | Qiskit Aer, no noise | Establish a correct baseline |
 | 2 – Noisy | FakeKolkata noise model | Measure how noise degrades accuracy |
 | 3 – Mitigated | Mitiq on noisy simulation | Test if error mitigation helps |
@@ -141,7 +168,7 @@ User uploads Sudoku photo
 ## Project Timeline
 
 | Week | Focus | Owner(s) |
-|---|---|---|
+| --- | --- | --- |
 | Week 1 | Quantum solver core + oracle | Somnang |
 | Week 1 | Project setup + repo structure | Reach |
 | Week 2 | Image recognition with OpenCV | Nike |
@@ -149,6 +176,7 @@ User uploads Sudoku photo
 | Week 2 | Noise experiments begin | Rayu |
 | Week 3 | Error mitigation + experiment analysis | Rayu |
 | Week 3 | Frontend UI | Reach |
+| Week 3 | Quantum practice ladder for all members | All |
 | Week 3 | Full integration + testing | All |
 | Week 3 | Final report + presentation | All |
 
@@ -163,7 +191,7 @@ QuSud/
 ├── backend/                # FastAPI backend server (Taingchay)
 │   ├── main.py
 │   └── routes/
-├── quantum/                # Quantum solver and experiments (Somnang, Rayu)
+├── quantum/                # Quantum solver and experiments (led by Somnang, Rayu; used by all)
 │   ├── grover.py
 │   ├── oracle.py
 │   ├── experiments/
@@ -224,7 +252,7 @@ npm start
 ## Authors
 
 | Name | Role |
-|---|---|
+| --- | --- |
 | Somnang | Quantum Algorithm Engineer |
 | Rayu | Quantum Experiments & Error Mitigation |
 | Nike | Image Processing Engineer |
