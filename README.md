@@ -1,72 +1,100 @@
 # QuSud Race – Human vs Classical vs Quantum
 
-> A web game where **three players race to solve the same Sudoku puzzle** — a human, a machine-learning solver, and a quantum algorithm.
+> A browser game where **three players race to solve the same Sudoku puzzle** — a human, an ML solver, and a quantum algorithm.
 
-**Course:** Quantum Computing
-**Group:** Gen10 G2 – Software Engineering
+**Course:** Quantum Computing  
+**Group:** Gen10 G2 – Software Engineering  
 **Team Size:** 5
 
 ---
 
 ## What is QuSud Race?
 
-QuSud is a browser game about one question: **who solves a Sudoku fastest, and what does it cost them?**
+QuSud Race is a browser game built around one question: **who solves a Sudoku fastest, and what does it cost them?**
 
-The player picks a difficulty, then watches (and joins) a head-to-head race between three solvers on the same board:
+The user picks a difficulty level and a fresh puzzle is generated automatically. A live three-way race then begins on the same board:
 
-| Player | Who/what it is |
+| Player | Who / what it is |
 | --- | --- |
-| **Human** | You — solving the board manually with the mouse/keyboard |
-| **Classical** | A machine-learning solver trained to infer the missing digits |
-| **Quantum** | A quantum algorithm running on a simulator (and real hardware where possible) |
+| **Human** | You — solving the board manually with the mouse or keyboard |
+| **Classical** | A machine-learning solver that infers the missing digits server-side |
+| **Quantum** | A quantum algorithm (Grover's Search at Easy, QAOA at Hard) on a Qiskit simulator |
 
-When the race ends, the game compares the three runs on **time**, **correctness**, and **how much search space each player had to explore**. The last metric is what makes quantum interesting: Grover's search only needs about √N checks where brute force needs N.
+When every player finishes, the results screen compares all three on **time**, **correctness**, and **search/optimization cost** — the number of oracle queries or circuit evaluations each solver needed. That last metric is where quantum stands out.
+
+> **There is no image upload.** The user only selects a difficulty level. The backend generates a unique puzzle for every session automatically.
+
+---
+
+## Quantum Algorithms
+
+The project uses **two distinct quantum paradigms**, one per level, to show what quantum computing can do on a combinatorial problem.
+
+### 🔵 Easy (4 × 4) — Grover's Search
+
+Grover's algorithm is a **quantum search** technique. It finds the correct answer in ~√N steps instead of N — a provable quadratic speedup over brute-force search.
+
+- Each cell is encoded as **2 qubits** (values 1–4 → 2-bit binary)
+- The oracle checks all row, column, and box constraints simultaneously in superposition
+- After ~√N Grover iterations, the correct board is amplified to a high measurement probability
+- **Qubit count:** ~32 qubits (16 cells × 2) — feasible on Qiskit Aer
+- **Claim:** ✅ Real quadratic advantage in oracle calls (√N vs N)
+
+### 🔴 Hard (9 × 9) — QAOA (Quantum Approximate Optimization Algorithm)
+
+QAOA is a **quantum optimization** technique. It encodes the puzzle as a combinatorial optimization problem, builds a cost Hamiltonian that penalizes constraint violations, and uses a parameterized quantum circuit to find the minimum-cost solution.
+
+- The classical ML solver fills most of the board first
+- QAOA takes the remaining **8–12 empty cells** as its sub-problem
+- A COBYLA variational optimizer tunes the circuit angles to minimize violations
+- **Qubit count:** ~20–30 qubits for the sub-problem — feasible on Qiskit Aer
+- **Claim:** ⚠️ Genuine quantum optimization, but no classical speedup claim at this circuit depth
+
+> **Why two algorithms?** Grover (search) and QAOA (optimization) are fundamentally different quantum strategies. Showing both makes the project stronger academically and demonstrates two real quantum paradigms.
+
+> **Why not full-board Grover for 9 × 9?** Full 9 × 9 Grover needs ~290 qubits and √(9⁸¹) iterations — far beyond any simulator or current hardware. QAOA on the reduced sub-problem is the honest, runnable alternative.
 
 ---
 
 ## Levels
 
-The game ships with two levels:
-
-| Level | Grid | Colour region | Quantum approach | Quantum claim |
+| Level | Grid | Quantum Algorithm | Paradigm | Claim |
 | --- | --- | --- | --- | --- |
-| **Easy** | 4×4 | 2×2 boxes | **Grover's Search** on Qiskit Aer | ✅ Real quadratic advantage in oracle calls (**√N** vs N) |
-| **Hard** | 9×9 | 3×3 boxes | **Quantum-assisted finish** — classical solver fills most cells, Grover solves the last few (~4–6 empty cells = 12–18 qubits) | ⚠️ Real quantum run, but **no speedup claim** — it finishes a reduced sub-problem |
-
-> **Why this split?** Full 9×9 Sudoku is far beyond any simulator or current hardware (~200+ qubits and √(9⁵⁰) Grover iterations). So at Hard, quantum only runs the small hard sub-problem that remains after the classical solver narrows the board. The README and report must state this explicitly — the honest finding is "quantum wins in *search complexity* at Easy, and only *assists* at Hard."
+| **Easy** | 4 × 4 | Grover's Search | Quantum Search | ✅ Quadratic speedup in oracle calls |
+| **Hard** | 9 × 9 | QAOA on sub-problem | Quantum Optimization | ⚠️ Genuine quantum optimization, no classical speedup |
 
 ---
 
 ## How a Game Session Works
 
 ```
-Player picks a level (Easy 4×4 / Hard 9×9)
+1. User opens the game and selects Easy (4×4) or Hard (9×9)
         ↓
-[Taingchay] Backend creates a game session and loads a puzzle
+2. Backend generates a fresh random puzzle for this session
+   (unique every time — no two games are the same)
         ↓
-Three players start at the same time on the same board
-   ├─ [Reach]  Human panel: the interactive grid
-   ├─ [Nike]   Classical panel: ML solver runs server-side
-   └─ [Somnang] Quantum panel: Grover / quantum-assisted solver runs
+3. All three players start simultaneously on the same board:
+   ├─ Human panel    — user solves it manually
+   ├─ Classical panel — ML solver runs on the server
+   └─ Quantum panel   — Grover (Easy) or QAOA (Hard) runs on the server
         ↓
-[Taingchay] Each solver reports: time, checks used, solution
+4. Each player finishes → panel shows ✅ COMPLETE with time + stats
         ↓
-[Rayu] Benchmarks the run and computes the search-space comparison
-        ↓
-[Reach] Results screen: race replay, timer bars, and a why-quantum-wins chart
+5. Results screen: timer bars, correctness badges,
+   and a search/optimization cost comparison chart
 ```
 
 ---
 
 ## How We Compare the Players
 
-Wall-clock time alone is unfair (a digital solver always beats a human, and a noisy simulator always beats a real quantum device). So each player is scored on three axes:
+Each player is scored on three axes:
 
-1. **Time to solve** — how long the player took.
-2. **Correctness** — did it produce a valid, unique solution?
-3. **Search cost** — number of candidate boards / oracle queries / ML forward passes used. This is the headline quantum metric: Grover explores ~√N candidates where brute force explores N.
+1. **Time to solve** — how long from start to finish.
+2. **Correctness** — did it produce a valid, complete, unique solution?
+3. **Search / optimization cost** — oracle queries (Grover), circuit evaluations (QAOA), or ML forward passes. This is the headline quantum metric.
 
-The results screen shows all three side by side, so the game is entertaining *and* scientifically honest.
+All three appear side by side on the results screen, keeping the game both entertaining and scientifically honest.
 
 ---
 
@@ -76,139 +104,168 @@ The results screen shows all three side by side, so the game is entertaining *an
 | --- | --- |
 | Frontend | React |
 | Backend API | FastAPI (Python) |
-| Game Sessions | In-memory store + WebSocket for live race state |
+| Real-time Race | WebSocket |
+| Puzzle Generation | On-demand procedural generator (Python) |
 | Classical Player | Python ML solver (constraint-propagation-guided model) |
 | Quantum Circuit | Qiskit |
 | Quantum Simulation | Qiskit Aer |
+| QAOA Optimizer | COBYLA (via Qiskit) |
 | Noisy Simulation | FakeKolkata |
 | Error Mitigation | Mitiq |
-| Puzzle Bank | Generated offline into a JSON/CSV bank |
 | Version Control | GitHub |
 
 ---
 
 ## Team Roles & Responsibilities
 
+Each member owns one primary module **and** one quantum coding task — everyone touches both the technical build and the quantum science.
+
+---
+
 ### 👤 Somnang — Quantum Algorithm Engineer
-**Primary Owner: Quantum Player Core**
+**Primary:** Grover's Search (Easy) + QAOA ansatz & optimizer (Hard)  
+**Quantum task:** Build both circuit cores — Grover oracle and QAOA ansatz
 
-Builds and verifies the quantum solver that plays as the third player.
+**Grover — Easy 4 × 4**
+- [ ] Implement Grover's Search on Qiskit (`quantum/grover.py`)
+- [ ] Build the oracle enforcing row, column, and box constraints in superposition
+- [ ] Build the Grover diffusion operator; set the correct iteration count (~√N)
+- [ ] Verify the circuit finds the correct solution across random Easy puzzles
+- [ ] Return: `{ solution, oracle_calls, qubits, circuit_depth, shots }`
 
-- [ ] Implement **Grover's Search** on Qiskit for the 4×4 Easy board
-- [ ] Encode cells with 2 qubits per cell; build the oracle that checks row/column/box constraints
-- [ ] Build the Grover diffusion operator and choose an iteration count
-- [ ] Verify the circuit returns the correct unique solution for every Easy puzzle in the bank
-- [ ] Build the **Hard (9×9) quantum-assisted finish**: accept the classical solver's partial board, encode the last 4–6 empty cells, run Grover on that reduced sub-problem
-- [ ] Return a uniform result object to the backend: `{solution, oracle_calls, qubits, depth, shots}`
-- [ ] Document why full 9×9 Grover is infeasible, so the report can cite it
-- [ ] **Quantum mentor:** walk every teammate through the circuit once
+**QAOA — Hard 9 × 9 (ansatz + optimizer)**
+- [ ] Build the QAOA ansatz circuit (`quantum/qaoa.py`) — parameterized Rz/Rx layers, start at depth p = 1
+- [ ] Run COBYLA to minimize the cost function; tune to p = 2 if needed
+- [ ] Decode the lowest-cost bitstring back into Sudoku digit assignments
+- [ ] Return: `{ solution, circuit_evaluations, qubits, circuit_depth, approximation_ratio }`
+- [ ] Document clearly why full-board Grover is infeasible for 9 × 9
+- [ ] Walk every teammate through both circuits at least once
 
 ---
 
 ### 👤 Rayu — Quantum Experiments & Benchmarking
-**Primary Owner: Comparison Engine + Noise Analysis**
+**Primary:** Benchmark harness + noise experiments  
+**Quantum task:** Build the QAOA cost Hamiltonian and run all noise experiments
 
-Owns the fairness of the race and the scientific experiments.
+**QAOA — Hard 9 × 9 (Hamiltonian)**
+- [ ] Formulate the sub-problem as a cost Hamiltonian penalizing constraint violations (`quantum/qaoa.py` — shared with Somnang)
+- [ ] Verify the Hamiltonian scores valid boards lower than invalid ones before Somnang plugs in the ansatz
 
-- [ ] Build the **benchmark harness**: time, correctness, and search-cost capture for all three players
-- [ ] Compute the **search-space comparison** (Grover √N vs classical N candidates) and feed it to the results screen
-- [ ] Run **Experiment 1 – Ideal**: Qiskit Aer statevector baseline
-- [ ] Run **Experiment 2 – Noisy**: FakeKolkata noise model; record drift in valid-solution probability
-- [ ] Run **Experiment 3 – Mitigated**: Mitiq zero-noise extrapolation; record the improvement
-- [ ] Produce the **"quantum advantage vs board size"** figure: candidate states vs qubits required for 4×4 → 9×9 → 16×16, with a hardware-limit line — this is the report's headline finding
-- [ ] Write the experimental comparison + limitations section of the final report
-- [ ] **Quantum practice:** implement one experiment end-to-end and demo how each noise setting changes the result
+**Benchmarking & Experiments**
+- [ ] Build the benchmark harness: capture time, correctness, and search/optimization cost for all three players (`benchmarks/`)
+- [ ] Compute the Grover search-cost comparison (√N vs N) and format it for the results screen
+- [ ] Compute the QAOA approximation ratio vs classical solver for Hard results
+- [ ] Run **Experiment 1 – Ideal**: Qiskit Aer statevector, no noise — baseline for both algorithms
+- [ ] Run **Experiment 2 – Noisy**: FakeKolkata — record degradation in solution quality
+- [ ] Run **Experiment 3 – Mitigated**: Mitiq zero-noise extrapolation — measure recovery
+- [ ] Produce the **scaling figure**: oracle calls / QAOA evaluations vs problem size (4×4 → 9×9 → 16×16) with hardware-limit line
 
 ---
 
 ### 👤 Nike — Classical AI Player & Puzzle Generator
-**Primary Owner: ML Solver + Puzzle Bank**
+**Primary:** ML solver + on-demand puzzle generator  
+**Quantum task:** Build the board-to-qubit encoder that both Grover and QAOA depend on
 
-Builds the middle player and the puzzles the game is played on.
+**Quantum encoder**
+- [ ] Implement `quantum/encoder.py`: convert a puzzle's empty cells into the 2-qubit-per-cell initialization format Grover's oracle expects
+- [ ] Extend the encoder to produce the variable list the QAOA Hamiltonian uses for Hard puzzles
+- [ ] Verify the encoding round-trips correctly: encode → decode gives back the original board
 
-- [ ] Generate a **puzzle bank** for both levels: many random valid boards, each reduced to a uniquely-solvable puzzle with a difficulty rating
-- [ ] Ensure every puzzle has exactly one solution; store givens, solution, and difficulty in a JSON/CSV bank
-- [ ] Build the **classical ML solver** that infers missing digits (a trained model, not a plain backtracker)
-- [ ] Wrap it with a **constraint checker** so outputs are guaranteed valid Sudoku (ML alone can hallucinate digits)
-- [ ] Return the same result object as the other players: `{solution, checks_used, time}`
-- [ ] Measure and report the ML solver's **accuracy and time per level**
-- [ ] Document honestly that a pure constraint solver would be faster than ML — state this in the report so the comparison is credible
-- [ ] **Quantum touch:** confirm the puzzle's encoding matches the qubit layout Somnang's oracle expects
+**Classical player & puzzle generator**
+- [ ] Build the on-demand puzzle generator (`puzzle_generator/generator.py`): given a difficulty, procedurally produce a valid, uniquely-solvable board — fresh every session
+- [ ] Confirm every generated puzzle has exactly one solution (`puzzle_generator/validator.py`)
+- [ ] Expose `generate_puzzle(difficulty) → { givens, solution }` as the interface the backend calls
+- [ ] Build the classical ML solver (`classical_ml/model.py`) — a trained model, not a plain backtracker
+- [ ] Wrap it with a constraint checker (`classical_ml/constraint_check.py`) so outputs are always valid Sudoku
+- [ ] Return: `{ solution, checks_used, time }`
 
 ---
 
 ### 👤 Taingchay — Backend API Developer
-**Primary Owner: FastAPI Backend + Race Orchestration**
+**Primary:** FastAPI backend + race orchestration  
+**Quantum task:** Wire Qiskit circuit execution inside FastAPI and parse quantum measurement results
 
-Runs the game server that ties the three players together.
+**Quantum integration**
+- [ ] In `backend/game_engine.py`, call `grover.run()` and `qaoa.run()` as async tasks and collect their result objects
+- [ ] Parse raw Qiskit measurement counts: extract the most-frequent bitstring, convert to digit assignments, attach qubit and depth metadata
+- [ ] Handle quantum timeouts: return `{ status: "did_not_finish", reason: "timeout" }` without crashing the race
 
-- [ ] Build the FastAPI backend
-- [ ] Create endpoints:
-  - `GET /levels` — list Easy/Hard with metadata
-  - `POST /game` — start a session: pick a puzzle, return the initial board
-  - `POST /game/{id}/solve` — run the Classical and Quantum players in parallel, return both results
-  - `POST /game/{id}/submit` — receive the human's completed board
-  - `GET /game/{id}/results` — return the three-way comparison
-- [ ] Add **WebSocket** live updates so panels show the racers' progress in real time
-- [ ] Implement a **fair race timer**: all three players' clocks start at the same instant
-- [ ] Validate inputs (board size, allowed digits, one-solution check)
-- [ ] Handle timeouts (e.g., quantum exceeds a cap → mark as "did not finish")
-- [ ] Enforce the **quantum scope guard**: reject any request to run full-board Grover on 9×9, and force the Hard level to use the quantum-assisted sub-problem (see Somnang's tasks)
+**Backend API**
+- [ ] Build the FastAPI server with these endpoints:
+  - `GET /levels` — list Easy / Hard with grid size and quantum algorithm used
+  - `POST /game` — call the puzzle generator, create a session, return the fresh board
+  - `POST /game/{id}/solve` — run Classical and Quantum solvers in parallel, return results
+  - `POST /game/{id}/submit` — receive and validate the human's completed board
+  - `GET /game/{id}/results` — return the three-way comparison data
+- [ ] Add WebSocket live updates so panels show real-time solver progress
+- [ ] Implement the fair race timer: all three clocks start at the same instant
+- [ ] Route Hard → QAOA and Easy → Grover at the API layer; enforce it so it cannot be bypassed
+- [ ] Ensure `POST /game` always calls the puzzle generator fresh — never reuse a previous session's board
 
 ---
 
 ### 👤 Reach — Frontend Developer & Project Integrator
-**Primary Owner: React Game UI + Integration**
+**Primary:** React game UI + full integration  
+**Quantum task:** Build the quantum visualizations — Grover measurement histogram and QAOA cost landscape
 
-Builds the game the whole class will see.
+**Quantum visualizations**
+- [ ] Render a **Grover measurement histogram** in the Quantum panel: bar chart of bitstring → probability (Easy sessions)
+- [ ] Render a **QAOA cost landscape** in the Quantum panel: line chart of cost value per optimizer iteration (Hard sessions)
+- [ ] Label each chart correctly — "ideal", "noisy", or "mitigated"
 
-- [ ] Build the React app with a **level-select screen** (Easy 4×4 / Hard 9×9)
-- [ ] Build the **three-panel race view**:
-  - Human panel — interactive grid with number entry and conflict highlighting
-  - Classical panel — live solver status, checks used, timer
-  - Quantum panel — live status, qubit count, oracle calls, a measurement-histogram mini-view
-- [ ] Build the **results screen**: per-player timer bars, correctness badges, and the search-cost comparison chart (Grover vs classical)
-- [ ] Show the *honest* label per level ("Quantum wins on search cost" at Easy, "Quantum assisted (no speedup claim)" at Hard)
-- [ ] Handle a **human win / loss** gracefully — no shame screen, just the comparison
-- [ ] Integrate with the backend (Taingchay) over REST + WebSocket
-- [ ] Coordinate final integration testing across all modules
-- [ ] Manage the GitHub repo, branches, and pull requests
-- [ ] **Quantum touch:** render measurement probability histograms for the ideal/noisy/mitigated runs
+**Game UI**
+- [ ] Build the **level-select screen** (Easy 4×4 / Hard 9×9) — the first and only screen before the race
+- [ ] Show a **"Generating puzzle…"** spinner while the backend builds the fresh board
+- [ ] Build the three-panel race view:
+  - Human panel — interactive grid, number entry, conflict highlighting
+  - Classical panel — solver status, checks used, running timer
+  - Quantum panel — qubit count, oracle calls (Grover) or circuit evaluations (QAOA), plus visualizations
+- [ ] Show **✅ COMPLETE** on each panel the moment that player finishes
+- [ ] Build the results screen: timer bars, correctness badges, search/optimization cost chart
+- [ ] Show the correct quantum label per level:
+  - Easy → *"Grover's Search — quadratic speedup in oracle calls (√N vs N)"*
+  - Hard → *"QAOA — quantum optimization on the sub-problem"*
+- [ ] Integrate with the backend over REST + WebSocket (coordinate with Taingchay)
+- [ ] Run final integration testing across all five modules
+- [ ] Manage the GitHub repo: branch strategy, pull requests, merge conflicts
+
+---
+
+## Task Balance Summary
+
+| Member | Primary module | Quantum task | Tasks |
+| --- | --- | --- | --- |
+| Somnang | Grover circuit + QAOA ansatz & optimizer | Grover oracle + QAOA ansatz layers | 9 |
+| Rayu | Benchmark harness + experiments | QAOA cost Hamiltonian + all noise experiments | 9 |
+| Nike | ML solver + puzzle generator | Board-to-qubit encoder (`encoder.py`) | 9 |
+| Taingchay | FastAPI backend + race orchestration | Qiskit wiring in FastAPI + parse measurement counts | 9 |
+| Reach | React UI + integration | Grover histogram + QAOA cost landscape charts | 10 |
 
 ---
 
 ## Quantum Practice — All Members
 
-QuSud is a quantum computing course project, so **every member must touch the quantum part**. Each person keeps their primary role and also owns one slice of the Grover-based solver.
+Every member completes this shared ladder independently before the project is submitted.
 
-| Member | Primary role | Quantum part they own |
-| --- | --- | --- |
-| Somnang | Quantum Algorithm Engineer | Grover circuit, oracle, diffusion operator |
-| Rayu | Experiments & Benchmarking | Ideal / noisy / mitigated runs, scaling figure |
-| Nike | Classical ML + Puzzles | Encode a recognised board into qubit initialization |
-| Taingchay | Backend | Execute the circuit from FastAPI, return measurement counts |
-| Reach | Frontend & Integrator | Plot measurement probabilities in the UI |
-
-### Shared practice ladder
-
-1. Run the ideal Grover circuit for a fixed 4×4 puzzle and read the solution bitstring.
-2. Add the FakeKolkata noise model and compare the valid-solution probability.
-3. Apply Mitiq zero-noise extrapolation and record the change.
-4. Change one given cell and confirm the oracle rejects invalid boards.
-5. Time each run; note qubit count, circuit depth, and shots.
+| Step | Task |
+| --- | --- |
+| 1 | Run the ideal Grover circuit for a fixed 4×4 puzzle; read and interpret the solution bitstring |
+| 2 | Run the QAOA circuit for a 4-cell sub-problem; read the lowest-cost bitstring |
+| 3 | Add FakeKolkata noise to both circuits; compare solution quality before and after |
+| 4 | Apply Mitiq zero-noise extrapolation; record how much quality is recovered |
+| 5 | Change one given cell to an invalid value; confirm both circuits reject the board |
+| 6 | Record qubit count, circuit depth, and shots / evaluations for each run |
 
 ---
 
-## Experiments (secondary to the game)
+## Experiments
 
-| Experiment | Setup | Goal |
-| --- | --- | --- |
-| 1 – Ideal | Qiskit Aer, no noise | Correct baseline |
-| 2 – Noisy | FakeKolkata noise model | How noise degrades accuracy |
-| 3 – Mitigated | Mitiq on noisy simulation | Whether mitigation helps |
-| 4 – Scaling | Candidate states vs qubits, 4×4 → 9×9 → 16×16 | Show where quantum advantage survives hardware limits |
-
-These run on top of the game and produce the report's experimental section; the game itself stays playable without them.
+| Experiment | Setup | Covers | Goal |
+| --- | --- | --- | --- |
+| 1 – Ideal | Qiskit Aer, no noise | Grover + QAOA | Establish correct baselines for both algorithms |
+| 2 – Noisy | FakeKolkata noise model | Grover + QAOA | Measure how noise degrades each algorithm |
+| 3 – Mitigated | Mitiq zero-noise extrapolation | Grover + QAOA | Measure how much mitigation recovers |
+| 4 – Scaling | Oracle calls / QAOA evals vs problem size | Both | Show where quantum advantage survives hardware limits |
 
 ---
 
@@ -216,15 +273,19 @@ These run on top of the game and produce the report's experimental section; the 
 
 | Week | Focus | Owner(s) |
 | --- | --- | --- |
-| Week 1 | Grover solver for 4×4 + oracle | Somnang |
-| Week 1 | Repo structure, level-select shell, game sessions | Reach, Taingchay |
-| Week 2 | Puzzle bank + Classical ML player | Nike |
-| Week 2 | Race API, WebSocket, timers | Taingchay |
-| Week 2 | Benchmark harness + ideal/noisy experiments | Rayu |
-| Week 3 | 9×9 quantum-assisted finish + mitigation | Somnang, Rayu |
-| Week 3 | Three-panel UI + results screen | Reach |
-| Week 3 | Quantum practice ladder for all members | All |
-| Week 3 | Full integration + testing | All |
+| Week 1 | Grover oracle + circuit for 4×4 | Somnang |
+| Week 1 | Board-to-qubit encoder | Nike |
+| Week 1 | Repo structure + level-select UI shell | Reach, Taingchay |
+| Week 2 | QAOA cost Hamiltonian | Rayu |
+| Week 2 | QAOA ansatz + optimizer | Somnang |
+| Week 2 | Puzzle generator + ML solver | Nike |
+| Week 2 | Race API, WebSocket, timers, Qiskit wiring | Taingchay |
+| Week 2 | Benchmark harness + Grover ideal/noisy experiments | Rayu |
+| Week 3 | QAOA experiments + scaling figure | Rayu |
+| Week 3 | Three-panel race UI + quantum visualizations | Reach |
+| Week 3 | Results screen | Reach |
+| Week 3 | Quantum practice ladder — all members | All |
+| Week 3 | Full integration testing | All |
 | Week 3 | Final report + presentation | All |
 
 ---
@@ -233,30 +294,30 @@ These run on top of the game and produce the report's experimental section; the 
 
 ```
 QuSud/
-├── frontend/                 # React game UI (Reach)
+├── frontend/                   # React game UI (Reach)
 │   └── src/
-│       ├── pages/            # LevelSelect, RaceView, Results
-│       └── components/       # HumanGrid, SolverPanel, RaceChart
-├── backend/                  # FastAPI server (Taingchay)
+│       ├── pages/              # LevelSelect, RaceView, Results
+│       └── components/         # HumanGrid, SolverPanel, GroverChart, QAOAChart, RaceChart
+├── backend/                    # FastAPI server (Taingchay)
 │   ├── main.py
 │   ├── routes/
-│   └── game_engine.py        # session state, race timer, orchestration
-├── quantum/                  # Quantum player (led by Somnang, Rayu)
-│   ├── grover.py             # 4×4 Grover solver
-│   ├── assisted.py           # 9×9 quantum-assisted finish
-│   ├── encoder.py            # board → qubit initialization
-│   └── experiments/
+│   └── game_engine.py          # session state, race timer, Qiskit wiring, orchestration
+├── quantum/                    # Quantum algorithms (Somnang + Rayu + Nike)
+│   ├── grover.py               # Grover solver — Easy 4×4           (Somnang)
+│   ├── qaoa.py                 # QAOA solver — Hard 9×9 sub-problem  (Somnang + Rayu)
+│   ├── encoder.py              # board → qubit / Hamiltonian encoding (Nike)
+│   └── experiments/            # Noise experiments                   (Rayu)
 │       ├── ideal.py
 │       ├── noisy.py
 │       ├── mitigated.py
 │       └── scaling.py
-├── classical_ml/             # Classical player (Nike)
+├── classical_ml/               # Classical player (Nike)
 │   ├── model.py
 │   └── constraint_check.py
-├── puzzles/                  # Generated puzzle bank (Nike)
-│   ├── easy_4x4.json
-│   └── hard_9x9.json
-├── benchmarks/               # Comparison harness (Rayu)
+├── puzzle_generator/           # On-demand puzzle generation (Nike)
+│   ├── generator.py            # generate_puzzle(difficulty) → { givens, solution }
+│   └── validator.py            # confirm unique solution
+├── benchmarks/                 # Comparison harness (Rayu)
 ├── README.md
 └── requirements.txt
 ```
@@ -265,12 +326,13 @@ QuSud/
 
 ## Deliverables
 
-1. **Playable Web Game** — two levels, three racing players, results screen
-2. **Quantum Solver** — Grover for 4×4, quantum-assisted finish for 9×9
+1. **Playable Web Game** — two levels, three racing players, complete results screen, fresh puzzle every session
+2. **Quantum Solver** — Grover's Search for 4×4, QAOA for 9×9 sub-problem
 3. **Classical ML Player** — trained solver with constraint checking
-4. **Source Code** — all code on GitHub
-5. **Experimental Results** — ideal/noisy/mitigated runs plus the quantum-advantage-vs-size analysis
-6. **Final Report & Presentation** — documentation and live demo
+4. **On-Demand Puzzle Generator** — unique valid puzzle produced per session
+5. **Source Code** — full codebase on GitHub
+6. **Experimental Results** — ideal / noisy / mitigated runs for both algorithms, plus the scaling analysis
+7. **Final Report & Presentation** — documentation and live demo
 
 ---
 
