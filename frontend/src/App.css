@@ -1,0 +1,306 @@
+/* App.css — QuSud Race global styles */
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  background: #0f0f1a;
+  color: #e2e8f0;
+  min-height: 100vh;
+}
+
+.app {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 2rem 1rem;
+}
+
+/* ── Level Select ───────────────────────────────── */
+.level-select {
+  text-align: center;
+  padding: 4rem 1rem;
+}
+
+.level-select h1 {
+  font-size: 3rem;
+  font-weight: 800;
+  color: #a78bfa;
+  margin-bottom: 0.5rem;
+}
+
+.level-select > p {
+  color: #94a3b8;
+  margin-bottom: 3rem;
+  font-size: 1.1rem;
+}
+
+.level-buttons {
+  display: flex;
+  gap: 2rem;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+.level-buttons button {
+  background: #1e1e2e;
+  border: 2px solid #334155;
+  border-radius: 1rem;
+  padding: 2rem 3rem;
+  cursor: pointer;
+  color: #e2e8f0;
+  transition: border-color 0.2s, transform 0.1s;
+  min-width: 200px;
+}
+
+.level-buttons button:hover {
+  border-color: #a78bfa;
+  transform: translateY(-3px);
+}
+
+.level-buttons button h2 {
+  font-size: 1.8rem;
+  margin-bottom: 0.5rem;
+  color: #c4b5fd;
+}
+
+.level-buttons button p {
+  color: #94a3b8;
+  font-size: 0.9rem;
+  margin-top: 0.3rem;
+}
+
+/* ── Loading ────────────────────────────────────── */
+.loading {
+  text-align: center;
+  padding: 5rem;
+  font-size: 1.3rem;
+  color: #94a3b8;
+}
+
+/* ── Race View ──────────────────────────────────── */
+.race-view h2 {
+  text-align: center;
+  margin-bottom: 1.5rem;
+  font-size: 1.5rem;
+  color: #c4b5fd;
+}
+
+.panels {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1rem;
+}
+
+.panel {
+  background: #1e1e2e;
+  border: 1px solid #334155;
+  border-radius: 0.75rem;
+  padding: 1rem;
+}
+
+.panel h3 {
+  text-align: center;
+  margin-bottom: 1rem;
+  font-size: 1.1rem;
+  color: #a78bfa;
+}
+
+/* ── Badges ─────────────────────────────────────── */
+.complete-badge {
+  text-align: center;
+  background: #14532d;
+  color: #86efac;
+  border-radius: 0.5rem;
+  padding: 0.4rem 0.8rem;
+  font-weight: 700;
+  margin-bottom: 0.75rem;
+}
+
+.dnf-badge {
+  text-align: center;
+  background: #450a0a;
+  color: #fca5a5;
+  border-radius: 0.5rem;
+  padding: 0.4rem 0.8rem;
+  font-weight: 700;
+  margin-bottom: 0.75rem;
+}
+
+.running-badge {
+  text-align: center;
+  color: #fbbf24;
+  margin-bottom: 0.75rem;
+  font-size: 0.9rem;
+}
+
+/* ── Sudoku Grid ────────────────────────────────── */
+.human-grid table {
+  border-collapse: collapse;
+  margin: 0 auto;
+}
+
+.human-grid td {
+  border: 1px solid #334155;
+}
+
+.human-grid td.conflict {
+  background: #450a0a;
+}
+
+.human-grid input {
+  width: 44px;
+  height: 44px;
+  text-align: center;
+  font-size: 1.2rem;
+  background: transparent;
+  border: none;
+  color: #e2e8f0;
+  outline: none;
+}
+
+.human-grid input.given {
+  color: #a78bfa;
+  font-weight: 700;
+}
+
+/* ── Solver Panel Stats ─────────────────────────── */
+.stats p {
+  font-size: 0.85rem;
+  color: #94a3b8;
+  margin: 0.25rem 0;
+}
+
+/* ── Charts ─────────────────────────────────────── */
+.bar-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin: 0.4rem 0;
+}
+
+.bar-label {
+  width: 80px;
+  font-size: 0.8rem;
+  color: #94a3b8;
+  text-align: right;
+  flex-shrink: 0;
+}
+
+.bar-label.bitstring {
+  font-family: monospace;
+  font-size: 0.7rem;
+  width: 100px;
+}
+
+.bar-track {
+  flex: 1;
+  background: #1e293b;
+  border-radius: 4px;
+  height: 16px;
+  overflow: hidden;
+}
+
+.bar {
+  height: 100%;
+  border-radius: 4px;
+  transition: width 0.4s ease;
+}
+
+.bar--classical { background: #38bdf8; }
+.bar--quantum   { background: #c084fc; }
+.bar--grover    { background: #818cf8; }
+
+.bar-value {
+  font-size: 0.8rem;
+  color: #cbd5e1;
+  width: 110px;
+  flex-shrink: 0;
+}
+
+.race-chart {
+  margin-top: 1.5rem;
+}
+
+.race-chart h3 {
+  font-size: 1rem;
+  color: #94a3b8;
+  margin-bottom: 0.75rem;
+}
+
+.grover-chart,
+.qaoa-chart {
+  margin-top: 1rem;
+}
+
+.grover-chart h4,
+.qaoa-chart h4 {
+  font-size: 0.85rem;
+  color: #94a3b8;
+  margin-bottom: 0.5rem;
+}
+
+.chart-note {
+  font-size: 0.75rem;
+  color: #64748b;
+  margin-top: 0.3rem;
+}
+
+/* ── Results Screen ─────────────────────────────── */
+.results {
+  padding: 1rem;
+}
+
+.results h2 {
+  text-align: center;
+  font-size: 1.8rem;
+  color: #c4b5fd;
+  margin-bottom: 1.5rem;
+}
+
+.results table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-bottom: 1.5rem;
+}
+
+.results th,
+.results td {
+  padding: 0.6rem 1rem;
+  border: 1px solid #334155;
+  text-align: center;
+  font-size: 0.95rem;
+}
+
+.results th {
+  background: #1e1e2e;
+  color: #a78bfa;
+}
+
+.quantum-label {
+  text-align: center;
+  font-size: 0.85rem;
+  color: #64748b;
+  margin-top: 1rem;
+  font-style: italic;
+}
+
+.play-again {
+  display: block;
+  margin: 2rem auto 0;
+  padding: 0.75rem 2.5rem;
+  background: #7c3aed;
+  color: white;
+  border: none;
+  border-radius: 0.5rem;
+  font-size: 1rem;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.play-again:hover {
+  background: #6d28d9;
+}
