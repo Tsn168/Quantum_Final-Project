@@ -1,11 +1,13 @@
 // App.js
 // Root component — manages which screen is shown and game session state.
 // Flow: LevelSelect → (loading puzzle) → RaceView → Results
+// All backend calls go through src/api/client.js (see docs/api-contract.md).
 
 import React, { useState } from 'react';
 import LevelSelect from './pages/LevelSelect';
 import RaceView    from './pages/RaceView';
 import Results     from './pages/Results';
+import { createGame, submitHuman, getResults } from './api/client';
 import './App.css';
 
 const SCREENS = {
@@ -15,89 +17,76 @@ const SCREENS = {
   RESULTS: 'results',
 };
 
+function BrandMark() {
+  return (
+    <span className="brand-mark" aria-hidden="true">
+      <span /><span /><span /><span />
+    </span>
+  );
+}
+
 function App() {
   const [screen,  setScreen]  = useState(SCREENS.SELECT);
-  const [level,   setLevel]   = useState(null);
-  const [puzzle,  setPuzzle]  = useState(null);
-  const [results, setResults] = useState(null);
+  const [game,    setGame]    = useState(null);   // POST /game response
+  const [results, setResults] = useState(null);   // GET /game/{id}/results response
+  const [error,   setError]   = useState(null);
 
-  async function handleSelectLevel(selectedLevel) {
-    setLevel(selectedLevel);
+  async function handleSelectLevel(level) {
+    setError(null);
     setScreen(SCREENS.LOADING);
-
     try {
-      // TODO (Taingchay): replace with real backend URL once API is ready
-      // const res    = await fetch('http://localhost:8000/game', {
-      //   method: 'POST',
-      //   headers: { 'Content-Type': 'application/json' },
-      //   body: JSON.stringify({ level: selectedLevel }),
-      // });
-      // const data   = await res.json();
-      // setPuzzle(data.board);
-
-      // --- Placeholder puzzle for local development ---
-      const placeholder = selectedLevel === 'easy'
-        ? [
-            [1, 0, 0, 4],
-            [0, 4, 1, 0],
-            [0, 1, 4, 0],
-            [4, 0, 0, 1],
-          ]
-        : Array(9).fill(null).map(() => Array(9).fill(0));
-
-      setPuzzle(placeholder);
+      setGame(await createGame(level));
       setScreen(SCREENS.RACE);
     } catch (err) {
       console.error('Failed to load puzzle:', err);
+      setError('The game server did not respond. Start the backend, then choose a level again.');
       setScreen(SCREENS.SELECT);
     }
   }
 
-  function handleHumanComplete(solvedBoard) {
-    // TODO (Taingchay): POST to /game/{id}/submit and then GET /game/{id}/results
-    // For now, move straight to results with placeholder data
-    setResults({
-      human:     { time: null, correct: true },
-      classical: { time: null, correct: true, checks_used: null },
-      quantum:   { time: null, correct: true, oracle_calls: null, circuit_evaluations: null },
-    });
-    setScreen(SCREENS.RESULTS);
+  async function handleHumanComplete(board, timeMs) {
+    try {
+      await submitHuman(game.game_id, board, timeMs);
+      setResults(await getResults(game.game_id));
+      setScreen(SCREENS.RESULTS);
+    } catch (err) {
+      console.error('Failed to submit board:', err);
+      setError('Your board was not sent. Check the backend is running, then fill in any cell again.');
+    }
   }
 
   function handlePlayAgain() {
     setScreen(SCREENS.SELECT);
-    setLevel(null);
-    setPuzzle(null);
+    setGame(null);
     setResults(null);
+    setError(null);
   }
 
   return (
     <div className="app">
+      <header className="app-header">
+        <span className="brand"><BrandMark /> QuSud Race</span>
+        {screen !== SCREENS.SELECT && (
+          <button className="btn btn-ghost" onClick={handlePlayAgain}>Change level</button>
+        )}
+      </header>
+
+      {error && <p className="error" role="alert">{error}</p>}
+
       {screen === SCREENS.SELECT && (
         <LevelSelect onSelectLevel={handleSelectLevel} />
       )}
 
       {screen === SCREENS.LOADING && (
-        <div className="loading">
-          <p>Generating puzzle…</p>
-        </div>
+        <p className="loading" role="status">Generating a new puzzle…</p>
       )}
 
       {screen === SCREENS.RACE && (
-        <RaceView
-          puzzle={puzzle}
-          level={level}
-          onHumanComplete={handleHumanComplete}
-        />
+        <RaceView game={game} onHumanComplete={handleHumanComplete} />
       )}
 
       {screen === SCREENS.RESULTS && (
-        <>
-          <Results results={results} level={level} />
-          <button className="play-again" onClick={handlePlayAgain}>
-            Play Again
-          </button>
-        </>
+        <Results results={results} onPlayAgain={handlePlayAgain} />
       )}
     </div>
   );

@@ -1,37 +1,57 @@
 // RaceView.js
 // Owner: Reach
-// Three-panel race screen shown after the puzzle is generated.
-// Hosts HumanGrid, SolverPanel (Classical), and SolverPanel (Quantum) side by side.
+// Race screen: the human board on the left, the classical and quantum solvers on the right.
+// Starts both solvers once (POST /game/{id}/solve) and hands each panel its SolverResult.
 
-import React from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import HumanGrid from '../components/HumanGrid';
 import SolverPanel from '../components/SolverPanel';
+import { solveGame } from '../api/client';
 
-function RaceView({ puzzle, level, onHumanComplete }) {
+function RaceView({ game, onHumanComplete }) {
+  const [solve, setSolve] = useState(null);   // { classical, quantum } or null while running
+  const [failed, setFailed] = useState(false);
+  const startedAt = useRef(Date.now());
+
+  useEffect(() => {
+    let cancelled = false;
+    startedAt.current = Date.now();
+    solveGame(game.game_id)
+      .then(result => { if (!cancelled) setSolve(result); })
+      .catch(err => {
+        console.error('Solve failed:', err);
+        if (!cancelled) setFailed(true);
+      });
+    return () => { cancelled = true; };
+  }, [game.game_id]);
+
+  function handleHumanComplete(board) {
+    onHumanComplete(board, Date.now() - startedAt.current);
+  }
+
+  const title = game.level === 'easy' ? 'Easy 4×4' : 'Hard 9×9';
+
   return (
-    <div className="race-view">
-      <h2>Race — {level === 'easy' ? 'Easy 4×4' : 'Hard 9×9'}</h2>
+    <section>
+      <div className="race-head">
+        <h2>{title}</h2>
+        <p>Fill every empty cell. Numbers that break a rule turn red.</p>
+      </div>
 
-      <div className="panels">
-        {/* Human panel */}
+      <div className="race">
         <div className="panel">
-          <h3>Human</h3>
-          <HumanGrid puzzle={puzzle} onComplete={onHumanComplete} />
+          <div className="panel-head">
+            <h3>You</h3>
+          </div>
+          <HumanGrid puzzle={game.board} box={game.box} onComplete={handleHumanComplete} />
         </div>
 
-        {/* Classical panel */}
-        <div className="panel">
-          <h3>Classical</h3>
-          <SolverPanel playerType="classical" level={level} puzzle={puzzle} />
-        </div>
-
-        {/* Quantum panel */}
-        <div className="panel">
-          <h3>Quantum</h3>
-          <SolverPanel playerType="quantum" level={level} puzzle={puzzle} />
+        <div className="solvers">
+          <SolverPanel playerType="classical" result={solve?.classical} failed={failed} />
+          <SolverPanel playerType="quantum" result={solve?.quantum} failed={failed} />
         </div>
       </div>
-    </div>
+    </section>
   );
 }
 

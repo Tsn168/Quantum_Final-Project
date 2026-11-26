@@ -1,81 +1,73 @@
 // SolverPanel.js
 // Owner: Reach
-// Reusable panel for the Classical and Quantum automated solvers.
-// Receives live status updates via WebSocket and shows progress, stats, and COMPLETE badge.
+// Panel for the Classical and Quantum solvers. Shows progress until its SolverResult
+// arrives (see docs/api-contract.md), then the stats and the quantum chart.
+// Later: live progress can come from WS /ws/{game_id}.
 
 import React, { useEffect, useState } from 'react';
 import GroverChart from './GroverChart';
 import QAOAChart from './QAOAChart';
+import { formatMs, metricLabel, algorithmName } from '../format';
 
-function SolverPanel({ playerType, level, puzzle }) {
-  const [status, setStatus] = useState('waiting');   // waiting | running | done | did_not_finish
-  // eslint-disable-next-line no-unused-vars
-  const [stats, setStats]   = useState(null);        // populated by WebSocket (Taingchay)
+const TITLES = { classical: 'Classical computer', quantum: 'Quantum algorithm' };
+
+function StatusBadge({ result, failed }) {
+  if (failed) return <span className="badge badge-destructive">No response</span>;
+  if (!result) return <span className="badge badge-outline">Solving</span>;
+  if (result.status === 'did_not_finish') {
+    return <span className="badge badge-destructive">Did not finish</span>;
+  }
+  return <span className="badge badge-primary">Finished</span>;
+}
+
+function SolverPanel({ playerType, result, failed }) {
   const [elapsed, setElapsed] = useState(0);
+  const running = !result && !failed;
 
-  // Timer
   useEffect(() => {
-    if (status !== 'running') return;
+    if (!running) return;
     const interval = setInterval(() => setElapsed(e => e + 1), 1000);
     return () => clearInterval(interval);
-  }, [status]);
+  }, [running]);
 
-  // WebSocket — connect to backend for live updates
-  useEffect(() => {
-    if (!puzzle) return;
-    setStatus('running');
-
-    // TODO (Taingchay): replace with real WebSocket URL once backend is ready
-    // const ws = new WebSocket(`ws://localhost:8000/ws/${playerType}`);
-    // ws.onmessage = (event) => {
-    //   const data = JSON.parse(event.data);
-    //   if (data.status === 'done') { setStatus('done'); setStats(data); }
-    //   if (data.status === 'did_not_finish') setStatus('did_not_finish');
-    // };
-    // return () => ws.close();
-  }, [puzzle, playerType]);
+  const q = result?.quantum;
 
   return (
-    <div className={`solver-panel solver-panel--${playerType}`}>
+    <div className={`panel panel--${playerType}`}>
+      <div className="panel-head">
+        <h3>{TITLES[playerType]}</h3>
+        <StatusBadge result={result} failed={failed} />
+      </div>
 
-      {/* Status badge */}
-      {status === 'done'            && <div className="complete-badge">✅ COMPLETE</div>}
-      {status === 'did_not_finish'  && <div className="dnf-badge">⏱ Did Not Finish</div>}
-      {status === 'running'         && <div className="running-badge">⚡ Running… {elapsed}s</div>}
-
-      {/* Stats */}
-      {stats && (
-        <div className="stats">
-          <p>Time: {stats.time}s</p>
-          <p>Correct: {stats.correct ? '✅' : '❌'}</p>
-
-          {playerType === 'classical' && (
-            <p>Checks used: {stats.checks_used}</p>
-          )}
-
-          {playerType === 'quantum' && level === 'easy' && (
-            <>
-              <p>Oracle calls: {stats.oracle_calls}</p>
-              <p>Qubits: {stats.qubits}</p>
-              <p>Circuit depth: {stats.circuit_depth}</p>
-            </>
-          )}
-
-          {playerType === 'quantum' && level === 'hard' && (
-            <>
-              <p>Circuit evaluations: {stats.circuit_evaluations}</p>
-              <p>Qubits: {stats.qubits}</p>
-              <p>Approx. ratio: {stats.approximation_ratio}</p>
-            </>
-          )}
-        </div>
+      {running && (
+        <>
+          <div className="progress" role="progressbar" aria-label={`${TITLES[playerType]} is solving`} />
+          <p className="elapsed">{elapsed} s</p>
+        </>
       )}
 
-      {/* Quantum visualizations */}
-      {playerType === 'quantum' && status === 'done' && stats && (
+      {failed && (
+        <p className="hint">The solver did not answer. Check that the backend is running.</p>
+      )}
+
+      {result && (
+        <dl className="stats">
+          <div><dt>Method</dt><dd>{algorithmName(result.algorithm)}</dd></div>
+          <div><dt>{metricLabel(result.search_cost.metric)}</dt><dd>{result.search_cost.value}</dd></div>
+          <div><dt>Time</dt><dd>{formatMs(result.time_ms)}</dd></div>
+          <div><dt>Answer</dt><dd>{result.correct ? 'Correct' : 'Wrong'}</dd></div>
+          {q && <div><dt>Qubits</dt><dd>{q.qubits}</dd></div>}
+          {q && <div><dt>Circuit depth</dt><dd>{q.circuit_depth}</dd></div>}
+          {q?.approximation_ratio != null && (
+            <div><dt>Approximation ratio</dt><dd>{q.approximation_ratio}</dd></div>
+          )}
+        </dl>
+      )}
+
+      {q && result.status === 'done' && (
         <>
-          {level === 'easy' && <GroverChart counts={stats.measurement_counts} />}
-          {level === 'hard' && <QAOAChart costHistory={stats.cost_history} />}
+          <GroverChart counts={q.measurement_counts} mode={q.mode} />
+          <QAOAChart costHistory={q.cost_history} mode={q.mode} />
         </>
       )}
     </div>
