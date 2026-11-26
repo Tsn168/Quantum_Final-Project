@@ -1,22 +1,26 @@
 // RaceChart.js
 // Owner: Reach
-// Search/optimization cost comparison chart shown on the Results screen.
-// Compares each player's search_cost (rule checks vs oracle calls / circuit evaluations).
+// The headline of the results screen: how many searches each solver needed.
 
 import React from 'react';
-import { metricLabel } from '../format';
+import { metricLabel, algorithmName } from '../format';
 
-function CostBar({ label, player, max, className }) {
+function VersusRow({ who, player, max, kind }) {
   const value = player?.search_cost?.value ?? 0;
   return (
-    <div className="bar-row">
-      <span className="bar-label">{label}</span>
-      <div className="bar-track">
-        <div className={`bar ${className}`} style={{ width: `${(value / max) * 100}%` }} />
+    <div className={`versus-row versus-row--${kind}`}>
+      <div className="versus-num">{value}</div>
+      <div>
+        <div className="versus-who">
+          <strong>{who}</strong>
+          <span>
+            {player ? `${metricLabel(player.search_cost.metric).toLowerCase()}, ${algorithmName(player.algorithm)}` : 'no result'}
+          </span>
+        </div>
+        <div className="versus-track">
+          <div className="versus-bar" style={{ width: `${(value / max) * 100}%` }} />
+        </div>
       </div>
-      <span className="bar-value">
-        {value} {player ? metricLabel(player.search_cost.metric).toLowerCase() : ''}
-      </span>
     </div>
   );
 }
@@ -27,10 +31,9 @@ function RaceChart({ classical, quantum }) {
   const max = Math.max(classical?.search_cost?.value ?? 0, quantum?.search_cost?.value ?? 0, 1);
 
   return (
-    <div className="race-chart">
-      <h3>Search / Optimization Cost</h3>
-      <CostBar label="Classical" player={classical} max={max} className="bar--classical" />
-      <CostBar label="Quantum"   player={quantum}   max={max} className="bar--quantum" />
+    <div className="versus">
+      <VersusRow who="Classical" player={classical} max={max} kind="classical" />
+      <VersusRow who="Quantum" player={quantum} max={max} kind="quantum" />
     </div>
   );
 }

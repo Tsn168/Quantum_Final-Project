@@ -1,52 +1,39 @@
 // QAOAChart.js
 // Owner: Reach
-// Quantum visualization for Hard (QAOA) sessions.
-// Renders a line chart of cost function value per optimizer iteration, showing convergence.
+// QAOA cost per optimizer round. Lower cost = fewer broken Sudoku rules.
 
 import React from 'react';
+import { modeName } from '../format';
 
 function QAOAChart({ costHistory, mode }) {
-  if (!costHistory || costHistory.length === 0) return null;
+  if (!costHistory || costHistory.length < 2) return null;
 
-  const width  = 300;
+  const width = 320;
   const height = 120;
-  const padding = 20;
+  const pad = { left: 28, right: 8, top: 8, bottom: 18 };
 
-  const minCost = Math.min(...costHistory);
-  const maxCost = Math.max(...costHistory);
-  const range   = maxCost - minCost || 1;
+  const min = Math.min(...costHistory);
+  const max = Math.max(...costHistory);
+  const range = max - min || 1;
 
   const points = costHistory.map((cost, i) => {
-    const x = padding + (i / (costHistory.length - 1)) * (width - padding * 2);
-    const y = height - padding - ((cost - minCost) / range) * (height - padding * 2);
-    return `${x},${y}`;
+    const x = pad.left + (i / (costHistory.length - 1)) * (width - pad.left - pad.right);
+    const y = pad.top + ((max - cost) / range) * (height - pad.top - pad.bottom);
+    return `${x.toFixed(1)},${y.toFixed(1)}`;
   });
 
   return (
-    <div className="qaoa-chart">
-      <h4>QAOA Cost Convergence{mode ? ` (${mode})` : ''}</h4>
-      <svg width={width} height={height}>
-        {/* Axes */}
-        <line x1={padding} y1={padding} x2={padding} y2={height - padding} stroke="#ccc" />
-        <line x1={padding} y1={height - padding} x2={width - padding} y2={height - padding} stroke="#ccc" />
-
-        {/* Cost curve */}
-        <polyline
-          fill="none"
-          stroke="#c084fc"
-          strokeWidth={2}
-          points={points.join(' ')}
-        />
-
-        {/* Labels */}
-        <text x={padding} y={height - 4} fontSize={10} fill="#888">0</text>
-        <text x={width - padding} y={height - 4} fontSize={10} fill="#888" textAnchor="end">
-          iter {costHistory.length}
-        </text>
-        <text x={4} y={padding + 4} fontSize={10} fill="#888">{maxCost.toFixed(2)}</text>
-        <text x={4} y={height - padding} fontSize={10} fill="#888">{minCost.toFixed(2)}</text>
+    <div className="chart">
+      <h4>Rule violations per optimizer round ({modeName(mode)})</h4>
+      <svg className="line-chart" viewBox={`0 0 ${width} ${height}`} role="img"
+        aria-label={`Cost fell from ${max.toFixed(1)} to ${min.toFixed(1)} over ${costHistory.length} rounds`}>
+        <line className="axis" x1={pad.left} y1={pad.top} x2={pad.left} y2={height - pad.bottom} />
+        <line className="axis" x1={pad.left} y1={height - pad.bottom} x2={width - pad.right} y2={height - pad.bottom} />
+        <polyline className="line" points={points.join(' ')} />
+        <text x={pad.left - 4} y={pad.top + 8} textAnchor="end">{max.toFixed(1)}</text>
+        <text x={pad.left - 4} y={height - pad.bottom} textAnchor="end">{min.toFixed(1)}</text>
+        <text x={width - pad.right} y={height - 4} textAnchor="end">round {costHistory.length}</text>
       </svg>
-      <p className="chart-note">Lower cost = fewer constraint violations</p>
     </div>
   );
 }

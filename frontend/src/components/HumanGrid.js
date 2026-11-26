@@ -1,6 +1,6 @@
 // HumanGrid.js
 // Owner: Reach
-// Interactive Sudoku grid for the Human panel.
+// Interactive Sudoku board for the human player.
 // Handles number entry, conflict highlighting, and fires onComplete when every cell is filled.
 // Empty cells are 0 (docs/api-contract.md). The box shape comes from the game ([rows, cols]).
 
@@ -48,33 +48,41 @@ function HumanGrid({ puzzle, box, onComplete }) {
     return false;
   }
 
+  function cellClass(r, c) {
+    return [
+      'cell',
+      c === size - 1 ? 'last-col' : (c + 1) % boxCols === 0 ? 'box-right' : '',
+      r === size - 1 ? 'last-row' : (r + 1) % boxRows === 0 ? 'box-bottom' : '',
+      isConflict(r, c) ? 'conflict' : '',
+    ].join(' ');
+  }
+
   return (
-    <div className="human-grid">
-      {done && <div className="complete-badge">✅ COMPLETE</div>}
-      <table>
-        <tbody>
-          {board.map((row, r) => (
-            <tr key={r}>
-              {row.map((cell, c) => {
-                const isGiven = !isEmpty(puzzle[r][c]);
-                return (
-                  <td key={c} className={isConflict(r, c) ? 'conflict' : ''}>
-                    <input
-                      type="text"
-                      maxLength={1}
-                      aria-label={`cell ${r + 1}-${c + 1}`}
-                      value={isEmpty(cell) ? '' : cell}
-                      disabled={isGiven || done}
-                      onChange={e => handleChange(r, c, e.target.value)}
-                      className={isGiven ? 'given' : ''}
-                    />
-                  </td>
-                );
-              })}
-            </tr>
-          ))}
-        </tbody>
-      </table>
+    <div
+      className={`board board--${size}`}
+      role="grid"
+      aria-label="Your Sudoku board"
+      style={{ gridTemplateColumns: `repeat(${size}, 1fr)` }}
+    >
+      {board.map((row, r) =>
+        row.map((cell, c) => {
+          const isGiven = !isEmpty(puzzle[r][c]);
+          return (
+            <div key={`${r}-${c}`} className={cellClass(r, c)} role="gridcell">
+              <input
+                type="text"
+                inputMode="numeric"
+                maxLength={size > 9 ? 2 : 1}
+                aria-label={`cell ${r + 1}-${c + 1}`}
+                value={isEmpty(cell) ? '' : cell}
+                disabled={isGiven || done}
+                onChange={e => handleChange(r, c, e.target.value)}
+                className={isGiven ? 'given' : ''}
+              />
+            </div>
+          );
+        })
+      )}
     </div>
   );
 }

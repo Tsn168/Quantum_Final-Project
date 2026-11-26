@@ -1,14 +1,24 @@
 // SolverPanel.js
 // Owner: Reach
-// Reusable panel for the Classical and Quantum automated solvers.
-// Shows a running timer until its SolverResult arrives (see docs/api-contract.md),
-// then the stats, the COMPLETE badge, and the quantum charts.
+// Panel for the Classical and Quantum solvers. Shows progress until its SolverResult
+// arrives (see docs/api-contract.md), then the stats and the quantum chart.
 // Later: live progress can come from WS /ws/{game_id}.
 
 import React, { useEffect, useState } from 'react';
 import GroverChart from './GroverChart';
 import QAOAChart from './QAOAChart';
-import { formatMs, metricLabel } from '../format';
+import { formatMs, metricLabel, algorithmName } from '../format';
+
+const TITLES = { classical: 'Classical computer', quantum: 'Quantum algorithm' };
+
+function StatusBadge({ result, failed }) {
+  if (failed) return <span className="badge badge-destructive">No response</span>;
+  if (!result) return <span className="badge badge-outline">Solving</span>;
+  if (result.status === 'did_not_finish') {
+    return <span className="badge badge-destructive">Did not finish</span>;
+  }
+  return <span className="badge badge-primary">Finished</span>;
+}
 
 function SolverPanel({ playerType, result, failed }) {
   const [elapsed, setElapsed] = useState(0);
@@ -23,30 +33,35 @@ function SolverPanel({ playerType, result, failed }) {
   const q = result?.quantum;
 
   return (
-    <div className={`solver-panel solver-panel--${playerType}`}>
+    <div className={`panel panel--${playerType}`}>
+      <div className="panel-head">
+        <h3>{TITLES[playerType]}</h3>
+        <StatusBadge result={result} failed={failed} />
+      </div>
 
-      {running && <div className="running-badge">⚡ Running… {elapsed}s</div>}
-      {failed  && <div className="dnf-badge">⚠ Could not reach the solver</div>}
-      {result?.status === 'done'           && <div className="complete-badge">✅ COMPLETE</div>}
-      {result?.status === 'did_not_finish' && (
-        <div className="dnf-badge">⏱ Did Not Finish{result.reason ? ` (${result.reason})` : ''}</div>
+      {running && (
+        <>
+          <div className="progress" role="progressbar" aria-label={`${TITLES[playerType]} is solving`} />
+          <p className="elapsed">{elapsed} s</p>
+        </>
+      )}
+
+      {failed && (
+        <p className="hint">The solver did not answer. Check that the backend is running.</p>
       )}
 
       {result && (
-        <div className="stats">
-          <p>Algorithm: {result.algorithm}</p>
-          <p>Time: {formatMs(result.time_ms)}</p>
-          <p>Correct: {result.correct ? '✅' : '❌'}</p>
-          <p>{metricLabel(result.search_cost.metric)}: {result.search_cost.value}</p>
-
-          {q && (
-            <>
-              <p>Qubits: {q.qubits}</p>
-              <p>Circuit depth: {q.circuit_depth}</p>
-              {q.approximation_ratio != null && <p>Approx. ratio: {q.approximation_ratio}</p>}
-            </>
+        <dl className="stats">
+          <div><dt>Method</dt><dd>{algorithmName(result.algorithm)}</dd></div>
+          <div><dt>{metricLabel(result.search_cost.metric)}</dt><dd>{result.search_cost.value}</dd></div>
+          <div><dt>Time</dt><dd>{formatMs(result.time_ms)}</dd></div>
+          <div><dt>Answer</dt><dd>{result.correct ? 'Correct' : 'Wrong'}</dd></div>
+          {q && <div><dt>Qubits</dt><dd>{q.qubits}</dd></div>}
+          {q && <div><dt>Circuit depth</dt><dd>{q.circuit_depth}</dd></div>}
+          {q?.approximation_ratio != null && (
+            <div><dt>Approximation ratio</dt><dd>{q.approximation_ratio}</dd></div>
           )}
-        </div>
+        </dl>
       )}
 
       {q && result.status === 'done' && (

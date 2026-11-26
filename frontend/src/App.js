@@ -17,6 +17,14 @@ const SCREENS = {
   RESULTS: 'results',
 };
 
+function BrandMark() {
+  return (
+    <span className="brand-mark" aria-hidden="true">
+      <span /><span /><span /><span />
+    </span>
+  );
+}
+
 function App() {
   const [screen,  setScreen]  = useState(SCREENS.SELECT);
   const [game,    setGame]    = useState(null);   // POST /game response
@@ -31,7 +39,7 @@ function App() {
       setScreen(SCREENS.RACE);
     } catch (err) {
       console.error('Failed to load puzzle:', err);
-      setError('Could not start a game. Is the backend running?');
+      setError('The game server did not respond. Start the backend, then choose a level again.');
       setScreen(SCREENS.SELECT);
     }
   }
@@ -43,7 +51,7 @@ function App() {
       setScreen(SCREENS.RESULTS);
     } catch (err) {
       console.error('Failed to submit board:', err);
-      setError('Could not submit your board.');
+      setError('Your board was not sent. Check the backend is running, then fill in any cell again.');
     }
   }
 
@@ -56,16 +64,21 @@ function App() {
 
   return (
     <div className="app">
-      {error && <p className="error">{error}</p>}
+      <header className="app-header">
+        <span className="brand"><BrandMark /> QuSud Race</span>
+        {screen !== SCREENS.SELECT && (
+          <button className="btn btn-ghost" onClick={handlePlayAgain}>Change level</button>
+        )}
+      </header>
+
+      {error && <p className="error" role="alert">{error}</p>}
 
       {screen === SCREENS.SELECT && (
         <LevelSelect onSelectLevel={handleSelectLevel} />
       )}
 
       {screen === SCREENS.LOADING && (
-        <div className="loading">
-          <p>Generating puzzle…</p>
-        </div>
+        <p className="loading" role="status">Generating a new puzzle…</p>
       )}
 
       {screen === SCREENS.RACE && (
@@ -73,12 +86,7 @@ function App() {
       )}
 
       {screen === SCREENS.RESULTS && (
-        <>
-          <Results results={results} />
-          <button className="play-again" onClick={handlePlayAgain}>
-            Play Again
-          </button>
-        </>
+        <Results results={results} onPlayAgain={handlePlayAgain} />
       )}
     </div>
   );

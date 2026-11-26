@@ -1,68 +1,81 @@
 // Results.js
 // Owner: Reach
-// Results screen shown after the human finishes.
-// Input: GET /game/{id}/results (see docs/api-contract.md).
-// Headline = search cost (how many searches each solver needed); real time is shown too.
+// Results screen. Input: GET /game/{id}/results (see docs/api-contract.md).
+// Headline = searches needed per solver; real time is shown underneath, honestly.
 
 import React from 'react';
 import RaceChart from '../components/RaceChart';
-import { formatMs, metricLabel } from '../format';
+import { formatMs, algorithmName } from '../format';
 
-function Results({ results }) {
+function AnswerBadge({ player }) {
+  if (!player) return <span className="badge badge-outline">No answer</span>;
+  return player.correct
+    ? <span className="badge badge-primary">Correct</span>
+    : <span className="badge badge-destructive">Wrong</span>;
+}
+
+function verdict(classical, quantum) {
+  const c = classical?.search_cost?.value;
+  const q = quantum?.search_cost?.value;
+  if (!c || !q) return null;
+  if (q < c) return `The quantum algorithm needed ${(c / q).toFixed(1)}× fewer searches than the classical one.`;
+  if (q > c) return `The classical solver needed ${(q / c).toFixed(1)}× fewer searches this time.`;
+  return 'Both solvers needed the same number of searches.';
+}
+
+function Results({ results, onPlayAgain }) {
   if (!results) return null;
 
   const { level, human, classical, quantum } = results;
-  const correct = player => (player?.correct ? '✅' : '❌');
-  const cost = player =>
-    player ? `${player.search_cost.value} ${metricLabel(player.search_cost.metric).toLowerCase()}` : '—';
 
   return (
-    <div className="results">
-      <h2>Race Results</h2>
+    <section className="results">
+      <h2>Searches needed to solve this puzzle</h2>
 
-      <table>
+      <RaceChart classical={classical} quantum={quantum} />
+      <p className="verdict">{verdict(classical, quantum)}</p>
+
+      <table className="score">
         <thead>
           <tr>
             <th>Player</th>
-            <th>Search Cost</th>
-            <th>Correct</th>
-            <th>Real Time</th>
+            <th className="method">Method</th>
+            <th>Answer</th>
+            <th className="num">Real time</th>
           </tr>
         </thead>
         <tbody>
           <tr>
-            <td>Human</td>
-            <td>—</td>
-            <td>{correct(human)}</td>
-            <td>{formatMs(human?.time_ms)}</td>
+            <td>You</td>
+            <td className="method">By hand</td>
+            <td><AnswerBadge player={human} /></td>
+            <td className="num">{formatMs(human?.time_ms)}</td>
           </tr>
           <tr>
-            <td>Classical ({classical?.algorithm ?? '—'})</td>
-            <td>{cost(classical)}</td>
-            <td>{correct(classical)}</td>
-            <td>{formatMs(classical?.time_ms)}</td>
+            <td>Classical computer</td>
+            <td className="method">{algorithmName(classical?.algorithm)}</td>
+            <td><AnswerBadge player={classical} /></td>
+            <td className="num">{formatMs(classical?.time_ms)}</td>
           </tr>
           <tr>
-            <td>Quantum ({quantum?.algorithm ?? '—'})</td>
-            <td>{cost(quantum)}</td>
-            <td>{correct(quantum)}</td>
-            <td>{formatMs(quantum?.time_ms)}</td>
+            <td>Quantum algorithm</td>
+            <td className="method">{algorithmName(quantum?.algorithm)}</td>
+            <td><AnswerBadge player={quantum} /></td>
+            <td className="num">{formatMs(quantum?.time_ms)}</td>
           </tr>
         </tbody>
       </table>
 
-      <RaceChart classical={classical} quantum={quantum} />
-
-      <p className="quantum-label">
+      <p className="footnote">
         {level === 'easy'
-          ? 'Grover\'s Search — quadratic speedup in oracle calls (√N vs N)'
-          : 'QAOA — quantum optimization on the sub-problem'}
+          ? 'Grover’s search needs about √N checks where brute-force search needs about N. '
+          : 'QAOA treats the puzzle as an optimization problem; it has no proven speed-up. '}
+        The quantum algorithm is slower in real time because its qubits are simulated on an
+        ordinary computer.
       </p>
-      <p className="chart-note">
-        Real time for the quantum player is slower because its qubits are simulated on a
-        normal computer. The advantage is in the number of searches.
-      </p>
-    </div>
+
+      <button className="btn btn-primary" onClick={onPlayAgain}>Play again</button>
+    </section>
   );
 }
 
