@@ -5,7 +5,7 @@
 
 import React from 'react';
 
-function GroverChart({ counts }) {
+function GroverChart({ counts, mode }) {
   if (!counts || Object.keys(counts).length === 0) return null;
 
   const total  = Object.values(counts).reduce((a, b) => a + b, 0);
@@ -14,7 +14,7 @@ function GroverChart({ counts }) {
 
   return (
     <div className="grover-chart">
-      <h4>Grover Measurement Probabilities</h4>
+      <h4>Grover Measurement Probabilities{mode ? ` (${mode})` : ''}</h4>
       {sorted.map(([bitstring, count]) => (
         <div className="bar-row" key={bitstring}>
           <span className="bar-label bitstring">{bitstring}</span>

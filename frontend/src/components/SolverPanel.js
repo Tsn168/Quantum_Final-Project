@@ -1,81 +1,58 @@
 // SolverPanel.js
 // Owner: Reach
 // Reusable panel for the Classical and Quantum automated solvers.
-// Receives live status updates via WebSocket and shows progress, stats, and COMPLETE badge.
+// Shows a running timer until its SolverResult arrives (see docs/api-contract.md),
+// then the stats, the COMPLETE badge, and the quantum charts.
+// Later: live progress can come from WS /ws/{game_id}.
 
 import React, { useEffect, useState } from 'react';
 import GroverChart from './GroverChart';
 import QAOAChart from './QAOAChart';
+import { formatMs, metricLabel } from '../format';
 
-function SolverPanel({ playerType, level, puzzle }) {
-  const [status, setStatus] = useState('waiting');   // waiting | running | done | did_not_finish
-  // eslint-disable-next-line no-unused-vars
-  const [stats, setStats]   = useState(null);        // populated by WebSocket (Taingchay)
+function SolverPanel({ playerType, result, failed }) {
   const [elapsed, setElapsed] = useState(0);
+  const running = !result && !failed;
 
-  // Timer
   useEffect(() => {
-    if (status !== 'running') return;
+    if (!running) return;
     const interval = setInterval(() => setElapsed(e => e + 1), 1000);
     return () => clearInterval(interval);
-  }, [status]);
+  }, [running]);
 
-  // WebSocket — connect to backend for live updates
-  useEffect(() => {
-    if (!puzzle) return;
-    setStatus('running');
-
-    // TODO (Taingchay): replace with real WebSocket URL once backend is ready
-    // const ws = new WebSocket(`ws://localhost:8000/ws/${playerType}`);
-    // ws.onmessage = (event) => {
-    //   const data = JSON.parse(event.data);
-    //   if (data.status === 'done') { setStatus('done'); setStats(data); }
-    //   if (data.status === 'did_not_finish') setStatus('did_not_finish');
-    // };
-    // return () => ws.close();
-  }, [puzzle, playerType]);
+  const q = result?.quantum;
 
   return (
     <div className={`solver-panel solver-panel--${playerType}`}>
 
-      {/* Status badge */}
-      {status === 'done'            && <div className="complete-badge">✅ COMPLETE</div>}
-      {status === 'did_not_finish'  && <div className="dnf-badge">⏱ Did Not Finish</div>}
-      {status === 'running'         && <div className="running-badge">⚡ Running… {elapsed}s</div>}
+      {running && <div className="running-badge">⚡ Running… {elapsed}s</div>}
+      {failed  && <div className="dnf-badge">⚠ Could not reach the solver</div>}
+      {result?.status === 'done'           && <div className="complete-badge">✅ COMPLETE</div>}
+      {result?.status === 'did_not_finish' && (
+        <div className="dnf-badge">⏱ Did Not Finish{result.reason ? ` (${result.reason})` : ''}</div>
+      )}
 
-      {/* Stats */}
-      {stats && (
+      {result && (
         <div className="stats">
-          <p>Time: {stats.time}s</p>
-          <p>Correct: {stats.correct ? '✅' : '❌'}</p>
+          <p>Algorithm: {result.algorithm}</p>
+          <p>Time: {formatMs(result.time_ms)}</p>
+          <p>Correct: {result.correct ? '✅' : '❌'}</p>
+          <p>{metricLabel(result.search_cost.metric)}: {result.search_cost.value}</p>
 
-          {playerType === 'classical' && (
-            <p>Checks used: {stats.checks_used}</p>
-          )}
-
-          {playerType === 'quantum' && level === 'easy' && (
+          {q && (
             <>
-              <p>Oracle calls: {stats.oracle_calls}</p>
-              <p>Qubits: {stats.qubits}</p>
-              <p>Circuit depth: {stats.circuit_depth}</p>
-            </>
-          )}
-
-          {playerType === 'quantum' && level === 'hard' && (
-            <>
-              <p>Circuit evaluations: {stats.circuit_evaluations}</p>
-              <p>Qubits: {stats.qubits}</p>
-              <p>Approx. ratio: {stats.approximation_ratio}</p>
+              <p>Qubits: {q.qubits}</p>
+              <p>Circuit depth: {q.circuit_depth}</p>
+              {q.approximation_ratio != null && <p>Approx. ratio: {q.approximation_ratio}</p>}
             </>
           )}
         </div>
       )}
 
-      {/* Quantum visualizations */}
-      {playerType === 'quantum' && status === 'done' && stats && (
+      {q && result.status === 'done' && (
         <>
-          {level === 'easy' && <GroverChart counts={stats.measurement_counts} />}
-          {level === 'hard' && <QAOAChart costHistory={stats.cost_history} />}
+          <GroverChart counts={q.measurement_counts} mode={q.mode} />
+          <QAOAChart costHistory={q.cost_history} mode={q.mode} />
         </>
       )}
     </div>

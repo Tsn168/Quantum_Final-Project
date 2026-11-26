@@ -5,7 +5,7 @@
 
 import React from 'react';
 
-function QAOAChart({ costHistory }) {
+function QAOAChart({ costHistory, mode }) {
   if (!costHistory || costHistory.length === 0) return null;
 
   const width  = 300;
@@ -24,7 +24,7 @@ function QAOAChart({ costHistory }) {
 
   return (
     <div className="qaoa-chart">
-      <h4>QAOA Cost Convergence</h4>
+      <h4>QAOA Cost Convergence{mode ? ` (${mode})` : ''}</h4>
       <svg width={width} height={height}>
         {/* Axes */}
         <line x1={padding} y1={padding} x2={padding} y2={height - padding} stroke="#ccc" />

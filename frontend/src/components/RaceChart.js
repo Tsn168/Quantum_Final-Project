@@ -1,46 +1,36 @@
 // RaceChart.js
 // Owner: Reach
 // Search/optimization cost comparison chart shown on the Results screen.
-// Compares oracle calls (Grover) or circuit evaluations (QAOA) vs classical checks used.
+// Compares each player's search_cost (rule checks vs oracle calls / circuit evaluations).
 
 import React from 'react';
+import { metricLabel } from '../format';
 
-function RaceChart({ results, level }) {
-  if (!results) return null;
+function CostBar({ label, player, max, className }) {
+  const value = player?.search_cost?.value ?? 0;
+  return (
+    <div className="bar-row">
+      <span className="bar-label">{label}</span>
+      <div className="bar-track">
+        <div className={`bar ${className}`} style={{ width: `${(value / max) * 100}%` }} />
+      </div>
+      <span className="bar-value">
+        {value} {player ? metricLabel(player.search_cost.metric).toLowerCase() : ''}
+      </span>
+    </div>
+  );
+}
 
-  const { classical, quantum } = results;
+function RaceChart({ classical, quantum }) {
+  if (!classical && !quantum) return null;
 
-  const classicalCost = classical?.checks_used ?? 0;
-  const quantumCost   = level === 'easy'
-    ? (quantum?.oracle_calls ?? 0)
-    : (quantum?.circuit_evaluations ?? 0);
-
-  const max = Math.max(classicalCost, quantumCost, 1);
-
-  const classicalPct = (classicalCost / max) * 100;
-  const quantumPct   = (quantumCost   / max) * 100;
+  const max = Math.max(classical?.search_cost?.value ?? 0, quantum?.search_cost?.value ?? 0, 1);
 
   return (
     <div className="race-chart">
       <h3>Search / Optimization Cost</h3>
-
-      <div className="bar-row">
-        <span className="bar-label">Classical</span>
-        <div className="bar-track">
-          <div className="bar bar--classical" style={{ width: `${classicalPct}%` }} />
-        </div>
-        <span className="bar-value">{classicalCost} checks</span>
-      </div>
-
-      <div className="bar-row">
-        <span className="bar-label">Quantum</span>
-        <div className="bar-track">
-          <div className="bar bar--quantum" style={{ width: `${quantumPct}%` }} />
-        </div>
-        <span className="bar-value">
-          {quantumCost} {level === 'easy' ? 'oracle calls' : 'circuit evals'}
-        </span>
-      </div>
+      <CostBar label="Classical" player={classical} max={max} className="bar--classical" />
+      <CostBar label="Quantum"   player={quantum}   max={max} className="bar--quantum" />
     </div>
   );
 }
