@@ -167,7 +167,7 @@ Each member owns one primary module **and** one quantum coding task — everyone
 **Quantum task:** Build the board-to-qubit encoder that both Grover and QAOA depend on
 
 **Quantum encoder**
-- [ ] Implement `quantum/encoder.py`: convert a puzzle's empty cells into the 2-qubit-per-cell initialization format Grover's oracle expects
+- [ ] Implement `quantum/encoder.py`: convert a puzzle's empty cells into the 2-qubit-per-cell initialization format Grover's oracle expects.
 - [ ] Extend the encoder to produce the variable list the QAOA Hamiltonian uses for Hard puzzles
 - [ ] Verify the encoding round-trips correctly: encode → decode gives back the original board
 
