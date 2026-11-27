@@ -1,64 +1,81 @@
 // Results.js
 // Owner: Reach
-// Results screen shown after all three players finish.
-// Displays timer bars, correctness badges, and the search/optimization cost chart.
+// Results screen. Input: GET /game/{id}/results (see docs/api-contract.md).
+// Headline = searches needed per solver; real time is shown underneath, honestly.
 
 import React from 'react';
 import RaceChart from '../components/RaceChart';
+import { formatMs, algorithmName } from '../format';
 
-function Results({ results, level }) {
+function AnswerBadge({ player }) {
+  if (!player) return <span className="badge badge-outline">No answer</span>;
+  return player.correct
+    ? <span className="badge badge-primary">Correct</span>
+    : <span className="badge badge-destructive">Wrong</span>;
+}
+
+function verdict(classical, quantum) {
+  const c = classical?.search_cost?.value;
+  const q = quantum?.search_cost?.value;
+  if (!c || !q) return null;
+  if (q < c) return `The quantum algorithm needed ${(c / q).toFixed(1)}× fewer searches than the classical one.`;
+  if (q > c) return `The classical solver needed ${(q / c).toFixed(1)}× fewer searches this time.`;
+  return 'Both solvers needed the same number of searches.';
+}
+
+function Results({ results, onPlayAgain }) {
   if (!results) return null;
 
-  const { human, classical, quantum } = results;
+  const { level, human, classical, quantum } = results;
 
   return (
-    <div className="results">
-      <h2>Race Results</h2>
+    <section className="results">
+      <h2>Searches needed to solve this puzzle</h2>
 
-      <table>
+      <RaceChart classical={classical} quantum={quantum} />
+      <p className="verdict">{verdict(classical, quantum)}</p>
+
+      <table className="score">
         <thead>
           <tr>
             <th>Player</th>
-            <th>Time</th>
-            <th>Correct</th>
-            <th>Search Cost</th>
+            <th className="method">Method</th>
+            <th>Answer</th>
+            <th className="num">Real time</th>
           </tr>
         </thead>
         <tbody>
           <tr>
-            <td>Human</td>
-            <td>{human?.time ?? '—'}s</td>
-            <td>{human?.correct ? '✅' : '❌'}</td>
-            <td>—</td>
+            <td>You</td>
+            <td className="method">By hand</td>
+            <td><AnswerBadge player={human} /></td>
+            <td className="num">{formatMs(human?.time_ms)}</td>
           </tr>
           <tr>
-            <td>Classical</td>
-            <td>{classical?.time ?? '—'}s</td>
-            <td>{classical?.correct ? '✅' : '❌'}</td>
-            <td>{classical?.checks_used ?? '—'} checks</td>
+            <td>Classical computer</td>
+            <td className="method">{algorithmName(classical?.algorithm)}</td>
+            <td><AnswerBadge player={classical} /></td>
+            <td className="num">{formatMs(classical?.time_ms)}</td>
           </tr>
           <tr>
-            <td>Quantum</td>
-            <td>{quantum?.time ?? '—'}s</td>
-            <td>{quantum?.correct ? '✅' : '❌'}</td>
-            <td>
-              {level === 'easy'
-                ? `${quantum?.oracle_calls ?? '—'} oracle calls`
-                : `${quantum?.circuit_evaluations ?? '—'} circuit evals`}
-            </td>
+            <td>Quantum algorithm</td>
+            <td className="method">{algorithmName(quantum?.algorithm)}</td>
+            <td><AnswerBadge player={quantum} /></td>
+            <td className="num">{formatMs(quantum?.time_ms)}</td>
           </tr>
         </tbody>
       </table>
 
-      {/* Search/optimization cost comparison chart */}
-      <RaceChart results={results} level={level} />
-
-      <p className="quantum-label">
+      <p className="footnote">
         {level === 'easy'
-          ? 'Grover\'s Search — quadratic speedup in oracle calls (√N vs N)'
-          : 'QAOA — quantum optimization on the sub-problem'}
+          ? 'Grover’s search needs about √N checks where brute-force search needs about N. '
+          : 'QAOA treats the puzzle as an optimization problem; it has no proven speed-up. '}
+        The quantum algorithm is slower in real time because its qubits are simulated on an
+        ordinary computer.
       </p>
-    </div>
+
+      <button className="btn btn-primary" onClick={onPlayAgain}>Play again</button>
+    </section>
   );
 }
 

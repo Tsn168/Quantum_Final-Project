@@ -2,8 +2,8 @@
 
 > A browser game where **three players race to solve the same Sudoku puzzle** — a human, an ML solver, and a quantum algorithm.
 
-**Course:** Quantum Computing  
-**Group:** Gen10 G2 – Software Engineering  
+**Course:** Quantum Computing
+**Group:** Gen10 G2 – Software Engineering
 **Team Size:** 5
 
 ---
@@ -14,11 +14,11 @@ QuSud Race is a browser game built around one question: **who solves a Sudoku fa
 
 The user picks a difficulty level and a fresh puzzle is generated automatically. A live three-way race then begins on the same board:
 
-| Player | Who / what it is |
-| --- | --- |
-| **Human** | You — solving the board manually with the mouse or keyboard |
-| **Classical** | A machine-learning solver that infers the missing digits server-side |
-| **Quantum** | A quantum algorithm (Grover's Search at Easy, QAOA at Hard) on a Qiskit simulator |
+| Player              | Who / what it is                                                                  |
+| ------------------- | --------------------------------------------------------------------------------- |
+| **Human**     | You — solving the board manually with the mouse or keyboard                      |
+| **Classical** | A machine-learning solver that infers the missing digits server-side              |
+| **Quantum**   | A quantum algorithm (Grover's Search at Easy, QAOA at Hard) on a Qiskit simulator |
 
 When every player finishes, the results screen compares all three on **time**, **correctness**, and **search/optimization cost** — the number of oracle queries or circuit evaluations each solver needed. That last metric is where quantum stands out.
 
@@ -58,9 +58,9 @@ QAOA is a **quantum optimization** technique. It encodes the puzzle as a combina
 
 ## Levels
 
-| Level | Grid | Quantum Algorithm | Paradigm | Claim |
-| --- | --- | --- | --- | --- |
-| **Easy** | 4 × 4 | Grover's Search | Quantum Search | ✅ Quadratic speedup in oracle calls |
+| Level          | Grid   | Quantum Algorithm   | Paradigm             | Claim                                                   |
+| -------------- | ------ | ------------------- | -------------------- | ------------------------------------------------------- |
+| **Easy** | 4 × 4 | Grover's Search     | Quantum Search       | ✅ Quadratic speedup in oracle calls                    |
 | **Hard** | 9 × 9 | QAOA on sub-problem | Quantum Optimization | ⚠️ Genuine quantum optimization, no classical speedup |
 
 ---
@@ -100,19 +100,19 @@ All three appear side by side on the results screen, keeping the game both enter
 
 ## Tech Stack
 
-| Layer | Technology |
-| --- | --- |
-| Frontend | React |
-| Backend API | FastAPI (Python) |
-| Real-time Race | WebSocket |
-| Puzzle Generation | On-demand procedural generator (Python) |
-| Classical Player | Python ML solver (constraint-propagation-guided model) |
-| Quantum Circuit | Qiskit |
-| Quantum Simulation | Qiskit Aer |
-| QAOA Optimizer | COBYLA (via Qiskit) |
-| Noisy Simulation | FakeKolkata |
-| Error Mitigation | Mitiq |
-| Version Control | GitHub |
+| Layer              | Technology                                             |
+| ------------------ | ------------------------------------------------------ |
+| Frontend           | React                                                  |
+| Backend API        | FastAPI (Python)                                       |
+| Real-time Race     | WebSocket                                              |
+| Puzzle Generation  | On-demand procedural generator (Python)                |
+| Classical Player   | Python ML solver (constraint-propagation-guided model) |
+| Quantum Circuit    | Qiskit                                                 |
+| Quantum Simulation | Qiskit Aer                                             |
+| QAOA Optimizer     | COBYLA (via Qiskit)                                    |
+| Noisy Simulation   | FakeKolkata                                            |
+| Error Mitigation   | Mitiq                                                  |
+| Version Control    | GitHub                                                 |
 
 ---
 
@@ -123,10 +123,12 @@ Each member owns one primary module **and** one quantum coding task — everyone
 ---
 
 ### 👤 Somnang — Quantum Algorithm Engineer
-**Primary:** Grover's Search (Easy) + QAOA ansatz & optimizer (Hard)  
+
+**Primary:** Grover's Search (Easy) + QAOA ansatz & optimizer (Hard)
 **Quantum task:** Build both circuit cores — Grover oracle and QAOA ansatz
 
 **Grover — Easy 4 × 4**
+
 - [ ] Implement Grover's Search on Qiskit (`quantum/grover.py`)
 - [ ] Build the oracle enforcing row, column, and box constraints in superposition
 - [ ] Build the Grover diffusion operator; set the correct iteration count (~√N)
@@ -134,6 +136,7 @@ Each member owns one primary module **and** one quantum coding task — everyone
 - [ ] Return: `{ solution, oracle_calls, qubits, circuit_depth, shots }`
 
 **QAOA — Hard 9 × 9 (ansatz + optimizer)**
+
 - [ ] Build the QAOA ansatz circuit (`quantum/qaoa.py`) — parameterized Rz/Rx layers, start at depth p = 1
 - [ ] Run COBYLA to minimize the cost function; tune to p = 2 if needed
 - [ ] Decode the lowest-cost bitstring back into Sudoku digit assignments
@@ -144,14 +147,17 @@ Each member owns one primary module **and** one quantum coding task — everyone
 ---
 
 ### 👤 Rayu — Quantum Experiments & Benchmarking
-**Primary:** Benchmark harness + noise experiments  
+
+**Primary:** Benchmark harness + noise experiments
 **Quantum task:** Build the QAOA cost Hamiltonian and run all noise experiments
 
 **QAOA — Hard 9 × 9 (Hamiltonian)**
+
 - [ ] Formulate the sub-problem as a cost Hamiltonian penalizing constraint violations (`quantum/qaoa.py` — shared with Somnang)
 - [ ] Verify the Hamiltonian scores valid boards lower than invalid ones before Somnang plugs in the ansatz
 
 **Benchmarking & Experiments**
+
 - [ ] Build the benchmark harness: capture time, correctness, and search/optimization cost for all three players (`benchmarks/`)
 - [ ] Compute the Grover search-cost comparison (√N vs N) and format it for the results screen
 - [ ] Compute the QAOA approximation ratio vs classical solver for Hard results
@@ -163,7 +169,8 @@ Each member owns one primary module **and** one quantum coding task — everyone
 ---
 
 ### 👤 Nike — Classical AI Player & Puzzle Generator
-**Primary:** ML solver + on-demand puzzle generator  
+
+**Primary:** ML solver + on-demand puzzle generator
 **Quantum task:** Build the board-to-qubit encoder that both Grover and QAOA depend on
 
 **Quantum encoder**
@@ -184,15 +191,18 @@ The backend modules use `easy` for 4×4 and `hard` for 9×9. Call `generate_puzz
 ---
 
 ### 👤 Taingchay — Backend API Developer
-**Primary:** FastAPI backend + race orchestration  
+
+**Primary:** FastAPI backend + race orchestration
 **Quantum task:** Wire Qiskit circuit execution inside FastAPI and parse quantum measurement results
 
 **Quantum integration**
+
 - [ ] In `backend/game_engine.py`, call `grover.run()` and `qaoa.run()` as async tasks and collect their result objects
 - [ ] Parse raw Qiskit measurement counts: extract the most-frequent bitstring, convert to digit assignments, attach qubit and depth metadata
 - [ ] Handle quantum timeouts: return `{ status: "did_not_finish", reason: "timeout" }` without crashing the race
 
 **Backend API**
+
 - [ ] Build the FastAPI server with these endpoints:
   - `GET /levels` — list Easy / Hard with grid size and quantum algorithm used
   - `POST /game` — call the puzzle generator, create a session, return the fresh board
@@ -207,15 +217,18 @@ The backend modules use `easy` for 4×4 and `hard` for 9×9. Call `generate_puzz
 ---
 
 ### 👤 Reach — Frontend Developer & Project Integrator
-**Primary:** React game UI + full integration  
+
+**Primary:** React game UI + full integration
 **Quantum task:** Build the quantum visualizations — Grover measurement histogram and QAOA cost landscape
 
 **Quantum visualizations**
+
 - [ ] Render a **Grover measurement histogram** in the Quantum panel: bar chart of bitstring → probability (Easy sessions)
 - [ ] Render a **QAOA cost landscape** in the Quantum panel: line chart of cost value per optimizer iteration (Hard sessions)
 - [ ] Label each chart correctly — "ideal", "noisy", or "mitigated"
 
 **Game UI**
+
 - [ ] Build the **level-select screen** (Easy 4×4 / Hard 9×9) — the first and only screen before the race
 - [ ] Show a **"Generating puzzle…"** spinner while the backend builds the fresh board
 - [ ] Build the three-panel race view:
@@ -235,13 +248,13 @@ The backend modules use `easy` for 4×4 and `hard` for 9×9. Call `generate_puzz
 
 ## Task Balance Summary
 
-| Member | Primary module | Quantum task | Tasks |
-| --- | --- | --- | --- |
-| Somnang | Grover circuit + QAOA ansatz & optimizer | Grover oracle + QAOA ansatz layers | 9 |
-| Rayu | Benchmark harness + experiments | QAOA cost Hamiltonian + all noise experiments | 9 |
-| Nike | ML solver + puzzle generator | Board-to-qubit encoder (`encoder.py`) | 9 |
-| Taingchay | FastAPI backend + race orchestration | Qiskit wiring in FastAPI + parse measurement counts | 9 |
-| Reach | React UI + integration | Grover histogram + QAOA cost landscape charts | 10 |
+| Member    | Primary module                           | Quantum task                                        | Tasks |
+| --------- | ---------------------------------------- | --------------------------------------------------- | ----- |
+| Somnang   | Grover circuit + QAOA ansatz & optimizer | Grover oracle + QAOA ansatz layers                  | 9     |
+| Rayu      | Benchmark harness + experiments          | QAOA cost Hamiltonian + all noise experiments       | 9     |
+| Nike      | ML solver + puzzle generator             | Board-to-qubit encoder (`encoder.py`)             | 9     |
+| Taingchay | FastAPI backend + race orchestration     | Qiskit wiring in FastAPI + parse measurement counts | 9     |
+| Reach     | React UI + integration                   | Grover histogram + QAOA cost landscape charts       | 10    |
 
 ---
 
@@ -249,46 +262,46 @@ The backend modules use `easy` for 4×4 and `hard` for 9×9. Call `generate_puzz
 
 Every member completes this shared ladder independently before the project is submitted.
 
-| Step | Task |
-| --- | --- |
-| 1 | Run the ideal Grover circuit for a fixed 4×4 puzzle; read and interpret the solution bitstring |
-| 2 | Run the QAOA circuit for a 4-cell sub-problem; read the lowest-cost bitstring |
-| 3 | Add FakeKolkata noise to both circuits; compare solution quality before and after |
-| 4 | Apply Mitiq zero-noise extrapolation; record how much quality is recovered |
-| 5 | Change one given cell to an invalid value; confirm both circuits reject the board |
-| 6 | Record qubit count, circuit depth, and shots / evaluations for each run |
+| Step | Task                                                                                            |
+| ---- | ----------------------------------------------------------------------------------------------- |
+| 1    | Run the ideal Grover circuit for a fixed 4×4 puzzle; read and interpret the solution bitstring |
+| 2    | Run the QAOA circuit for a 4-cell sub-problem; read the lowest-cost bitstring                   |
+| 3    | Add FakeKolkata noise to both circuits; compare solution quality before and after               |
+| 4    | Apply Mitiq zero-noise extrapolation; record how much quality is recovered                      |
+| 5    | Change one given cell to an invalid value; confirm both circuits reject the board               |
+| 6    | Record qubit count, circuit depth, and shots / evaluations for each run                         |
 
 ---
 
 ## Experiments
 
-| Experiment | Setup | Covers | Goal |
-| --- | --- | --- | --- |
-| 1 – Ideal | Qiskit Aer, no noise | Grover + QAOA | Establish correct baselines for both algorithms |
-| 2 – Noisy | FakeKolkata noise model | Grover + QAOA | Measure how noise degrades each algorithm |
-| 3 – Mitigated | Mitiq zero-noise extrapolation | Grover + QAOA | Measure how much mitigation recovers |
-| 4 – Scaling | Oracle calls / QAOA evals vs problem size | Both | Show where quantum advantage survives hardware limits |
+| Experiment     | Setup                                     | Covers        | Goal                                                  |
+| -------------- | ----------------------------------------- | ------------- | ----------------------------------------------------- |
+| 1 – Ideal     | Qiskit Aer, no noise                      | Grover + QAOA | Establish correct baselines for both algorithms       |
+| 2 – Noisy     | FakeKolkata noise model                   | Grover + QAOA | Measure how noise degrades each algorithm             |
+| 3 – Mitigated | Mitiq zero-noise extrapolation            | Grover + QAOA | Measure how much mitigation recovers                  |
+| 4 – Scaling   | Oracle calls / QAOA evals vs problem size | Both          | Show where quantum advantage survives hardware limits |
 
 ---
 
 ## Project Timeline
 
-| Week | Focus | Owner(s) |
-| --- | --- | --- |
-| Week 1 | Grover oracle + circuit for 4×4 | Somnang |
-| Week 1 | Board-to-qubit encoder | Nike |
-| Week 1 | Repo structure + level-select UI shell | Reach, Taingchay |
-| Week 2 | QAOA cost Hamiltonian | Rayu |
-| Week 2 | QAOA ansatz + optimizer | Somnang |
-| Week 2 | Puzzle generator + ML solver | Nike |
-| Week 2 | Race API, WebSocket, timers, Qiskit wiring | Taingchay |
-| Week 2 | Benchmark harness + Grover ideal/noisy experiments | Rayu |
-| Week 3 | QAOA experiments + scaling figure | Rayu |
-| Week 3 | Three-panel race UI + quantum visualizations | Reach |
-| Week 3 | Results screen | Reach |
-| Week 3 | Quantum practice ladder — all members | All |
-| Week 3 | Full integration testing | All |
-| Week 3 | Final report + presentation | All |
+| Week   | Focus                                              | Owner(s)         |
+| ------ | -------------------------------------------------- | ---------------- |
+| Week 1 | Grover oracle + circuit for 4×4                   | Somnang          |
+| Week 1 | Board-to-qubit encoder                             | Nike             |
+| Week 1 | Repo structure + level-select UI shell             | Reach, Taingchay |
+| Week 2 | QAOA cost Hamiltonian                              | Rayu             |
+| Week 2 | QAOA ansatz + optimizer                            | Somnang          |
+| Week 2 | Puzzle generator + ML solver                       | Nike             |
+| Week 2 | Race API, WebSocket, timers, Qiskit wiring         | Taingchay        |
+| Week 2 | Benchmark harness + Grover ideal/noisy experiments | Rayu             |
+| Week 3 | QAOA experiments + scaling figure                  | Rayu             |
+| Week 3 | Three-panel race UI + quantum visualizations       | Reach            |
+| Week 3 | Results screen                                     | Reach            |
+| Week 3 | Quantum practice ladder — all members             | All              |
+| Week 3 | Full integration testing                           | All              |
+| Week 3 | Final report + presentation                        | All              |
 
 ---
 
@@ -341,29 +354,34 @@ QuSud/
 ## Getting Started
 
 ### 1. Clone the repository
+
 ```bash
 git clone <repository-url>
 cd QuSud
 ```
 
 ### 2. Install Python dependencies
+
 ```bash
 pip install -r requirements.txt
 ```
 
 ### 3. Install frontend dependencies
+
 ```bash
 cd frontend
 npm install
 ```
 
 ### 4. Run the backend
+
 ```bash
 cd backend
 uvicorn main:app --reload
 ```
 
 ### 5. Run the frontend
+
 ```bash
 cd frontend
 npm start
@@ -373,10 +391,10 @@ npm start
 
 ## Authors
 
-| Name | Role |
-| --- | --- |
-| Somnang | Quantum Algorithm Engineer |
-| Rayu | Quantum Experiments & Benchmarking |
-| Nike | Classical AI Player & Puzzle Generator |
-| Taingchay | Backend API Developer |
-| Reach | Frontend Developer & Project Integrator |
+| Name      | Role                                    |
+| --------- | --------------------------------------- |
+| Somnang   | Quantum Algorithm Engineer              |
+| Rayu      | Quantum Experiments & Benchmarking      |
+| Nike      | Classical AI Player & Puzzle Generator  |
+| Taingchay | Backend API Developer                   |
+| Reach     | Frontend Developer & Project Integrator |
