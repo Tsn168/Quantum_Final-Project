@@ -26,26 +26,16 @@ function App() {
     setScreen(SCREENS.LOADING);
 
     try {
-      // TODO (Taingchay): replace with real backend URL once API is ready
-      // const res    = await fetch('http://localhost:8000/game', {
-      //   method: 'POST',
-      //   headers: { 'Content-Type': 'application/json' },
-      //   body: JSON.stringify({ level: selectedLevel }),
-      // });
-      // const data   = await res.json();
-      // setPuzzle(data.board);
-
-      // --- Placeholder puzzle for local development ---
-      const placeholder = selectedLevel === 'easy'
-        ? [
-            [1, 0, 0, 4],
-            [0, 4, 1, 0],
-            [0, 1, 4, 0],
-            [4, 0, 0, 1],
-          ]
-        : Array(9).fill(null).map(() => Array(9).fill(0));
-
-      setPuzzle(placeholder);
+      const response = await fetch('http://localhost:8000/game', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ level: selectedLevel }),
+      });
+      if (!response.ok) {
+        throw new Error(`Puzzle request failed with status ${response.status}`);
+      }
+      const data = await response.json();
+      setPuzzle(data.board);
       setScreen(SCREENS.RACE);
     } catch (err) {
       console.error('Failed to load puzzle:', err);

@@ -172,12 +172,14 @@ Each member owns one primary module **and** one quantum coding task — everyone
 - [ ] Verify the encoding round-trips correctly: encode → decode gives back the original board
 
 **Classical player & puzzle generator**
-- [ ] Build the on-demand puzzle generator (`puzzle_generator/generator.py`): given a difficulty, procedurally produce a valid, uniquely-solvable board — fresh every session
-- [ ] Confirm every generated puzzle has exactly one solution (`puzzle_generator/validator.py`)
-- [ ] Expose `generate_puzzle(difficulty) → { givens, solution }` as the interface the backend calls
-- [ ] Build the classical ML solver (`classical_ml/model.py`) — a trained model, not a plain backtracker
-- [ ] Wrap it with a constraint checker (`classical_ml/constraint_check.py`) so outputs are always valid Sudoku
-- [ ] Return: `{ solution, checks_used, time }`
+- [x] Build the on-demand puzzle generator (`backend/puzzle_generator/generator.py`): given a difficulty, procedurally produce a valid, uniquely-solvable board — fresh every session
+- [x] Confirm every generated puzzle has exactly one solution (`backend/puzzle_generator/validator.py`)
+- [x] Expose `generate_puzzle(difficulty) → { givens, solution }` as the interface the backend calls
+- [x] Build the classical ML solver (`backend/classical_ml/model.py`) — a trained model, not a plain backtracker
+- [x] Wrap it with a constraint checker (`backend/classical_ml/constraint_check.py`) so outputs are always valid Sudoku
+- [x] Return: `{ solution, checks_used, time }`
+
+The backend modules use `easy` for 4×4 and `hard` for 9×9. Call `generate_puzzle(level)` for a fresh puzzle; the `solution` is for backend use and should not be sent to the browser. Call `backend.classical_ml.solve(givens)` to get the solution and solver statistics. Its locally trained linear ranker guides the search, while the constraint checker guarantees the returned board obeys Sudoku rules. The `POST /game` endpoint returns only `{"board": givens}` and is wired to the frontend's level selection. Start the API from the repository root with `uvicorn backend.main:app --reload` after installing `backend/requirements.txt`.
 
 ---
 
