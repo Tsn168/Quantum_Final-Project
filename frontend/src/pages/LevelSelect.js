@@ -39,9 +39,9 @@ const LEVELS = [
   {
     id: 'hard',
     name: 'Hard',
-    board: '9×9 board',
+    board: '9×9 board, 24–28 numbers given',
     algo: 'Quantum player uses QAOA',
-    grid: { size: 9, box: 3, filled: [0, 1, 6, 8, 9, 10, 11, 12, 13, 14, 18, 20, 23, 27, 28, 31, 34, 35, 39, 40, 43, 46, 47, 48, 49, 50, 51, 52, 53, 55, 56, 58, 60, 61, 62, 64, 65, 69, 72, 75, 79] },
+    grid: { size: 9, box: 3, filled: [1, 2, 6, 11, 13, 19, 22, 26, 28, 30, 33, 36, 40, 44, 47, 50, 52, 54, 58, 61, 64, 67, 69, 74, 79] },
   },
 ];
 
@@ -51,8 +51,9 @@ function LevelSelect({ onSelectLevel }) {
       <div className="intro">
         <h1>Solve a Sudoku before the computers do</h1>
         <p>
-          You race a classical solver and a quantum algorithm on the same puzzle.
-          At the end you see how many searches each one needed.
+          You, a classical solver and a quantum algorithm each solve the same puzzle on
+          your own boards. First to finish correctly wins, and at the end you see how many
+          searches each computer needed.
         </p>
       </div>
 

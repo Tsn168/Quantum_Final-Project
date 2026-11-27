@@ -1,6 +1,6 @@
 // App.js
 // Root component — manages which screen is shown and game session state.
-// Flow: LevelSelect → (loading puzzle) → RaceView → Results
+// Flow: LevelSelect → (loading puzzle) → RaceView (three boards) → Results
 // All backend calls go through src/api/client.js (see docs/api-contract.md).
 
 import React, { useState } from 'react';
@@ -29,6 +29,7 @@ function App() {
   const [screen,  setScreen]  = useState(SCREENS.SELECT);
   const [game,    setGame]    = useState(null);   // POST /game response
   const [results, setResults] = useState(null);   // GET /game/{id}/results response
+  const [race,    setRace]    = useState(null);   // when each player's board was full, from RaceView
   const [error,   setError]   = useState(null);
 
   async function handleSelectLevel(level) {
@@ -44,14 +45,15 @@ function App() {
     }
   }
 
-  async function handleHumanComplete(board, timeMs) {
+  async function handleHumanComplete(board, timeMs, raceTimes) {
+    setRace(raceTimes);
     try {
       await submitHuman(game.game_id, board, timeMs);
       setResults(await getResults(game.game_id));
       setScreen(SCREENS.RESULTS);
     } catch (err) {
       console.error('Failed to submit board:', err);
-      setError('Your board was not sent. Check the backend is running, then fill in any cell again.');
+      setError('The finished board was not sent. Check the backend is running, then choose Change level.');
     }
   }
 
@@ -59,6 +61,7 @@ function App() {
     setScreen(SCREENS.SELECT);
     setGame(null);
     setResults(null);
+    setRace(null);
     setError(null);
   }
 
@@ -86,7 +89,7 @@ function App() {
       )}
 
       {screen === SCREENS.RESULTS && (
-        <Results results={results} onPlayAgain={handlePlayAgain} />
+        <Results results={results} race={race} onPlayAgain={handlePlayAgain} />
       )}
     </div>
   );

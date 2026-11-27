@@ -454,3 +454,126 @@ button, input { font: inherit; color: inherit; }
   .versus-bar, .progress::after { animation: none; }
   .progress::after { width: 100%; opacity: 0.4; }
 }
+
+/* ---------- Three boards (one per player) ----------
+   Same tokens as above. Your numbers are white, the classical computer's grey,
+   the quantum algorithm's blue — matching the panel borders. */
+
+.race--three { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.race--three .panel > .board-wrap { margin-bottom: 1rem; }
+
+@media (max-width: 64rem) {
+  .race--three { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .race--three .panel--you { grid-column: 1 / -1; }
+}
+
+.board-wrap { position: relative; width: 100%; max-width: 30rem; margin: 0 auto; }
+.board-wrap .board { max-width: none; grid-template-rows: repeat(var(--size), minmax(0, 1fr)); }
+.board-row { display: grid; grid-template-columns: repeat(var(--size), 1fr); }
+.board-row .cell:last-child { border-right: 0; }
+.board-row:last-child .cell { border-bottom: 0; }
+
+.board-row .cell {
+  align-items: center;
+  justify-content: center;
+  min-width: 0;
+  padding: 0;
+  border-top: 0;
+  border-left: 0;
+  background: transparent;
+  font-size: var(--cell-font, 1.75rem);
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+  cursor: pointer;
+}
+.board-wrap--9 { --cell-font: 1.125rem; }
+
+.cell--given { color: var(--foreground); background: var(--secondary); cursor: default; }
+.cell--empty:hover { background: color-mix(in srgb, var(--foreground) 5%, transparent); }
+.cell--you { color: var(--foreground); }
+.cell--classical { color: var(--muted-foreground); background: color-mix(in srgb, var(--classical) 18%, transparent); cursor: default; }
+.cell--quantum { color: var(--primary); background: color-mix(in srgb, var(--primary) 15%, transparent); cursor: default; }
+
+.cell.is-selected,
+button.cell:focus-visible { outline: none; box-shadow: inset 0 0 0 2px var(--foreground); }
+.cell.is-conflict { color: var(--destructive); background: color-mix(in srgb, var(--destructive) 15%, transparent); }
+.cell.is-aimed--classical { box-shadow: inset 0 0 0 2px var(--classical); }
+.cell.is-aimed--quantum { box-shadow: inset 0 0 0 2px var(--primary); }
+button.cell:disabled { cursor: default; }
+
+/* Live cursors: the arrow tip sits on the centre of a cell and glides between cells. */
+.cursor-layer { position: absolute; inset: 0; pointer-events: none; }
+.cursor {
+  position: absolute;
+  transition: left 700ms cubic-bezier(0.2, 0.8, 0.2, 1), top 700ms cubic-bezier(0.2, 0.8, 0.2, 1), opacity 300ms;
+}
+.cursor--classical { --player: var(--classical); }
+.cursor--quantum { --player: var(--primary); }
+.cursor-arrow { display: block; margin: -2px 0 0 -2px; fill: var(--player); stroke: var(--background); stroke-width: 1.25; stroke-linejoin: round; }
+.cursor-tag {
+  position: absolute;
+  left: 12px;
+  top: 16px;
+  padding: 0 0.375rem;
+  border-radius: var(--radius);
+  background: var(--player);
+  color: var(--primary-foreground);
+  font-size: 0.6875rem;
+  font-weight: 500;
+  line-height: 1.25rem;
+  white-space: nowrap;
+}
+.cursor--flip .cursor-tag { left: auto; right: 4px; }
+.cursor--wait { opacity: 0.6; }
+.cursor--wait .cursor-tag::after { content: ' is solving…'; }
+
+/* Number pad */
+.pad { display: grid; grid-template-columns: repeat(10, 1fr); gap: 0.375rem; max-width: 30rem; margin: 1rem auto 0; }
+.pad--4 { grid-template-columns: repeat(5, 1fr); }
+.pad-key {
+  height: 2.5rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--secondary);
+  font-weight: 500;
+  cursor: pointer;
+}
+.pad-key:hover:not(:disabled) { border-color: var(--primary); }
+.pad-key:disabled { opacity: 0.45; cursor: default; }
+.pad-clear { font-size: var(--step--1); color: var(--muted-foreground); }
+
+.race-meta { display: flex; align-items: center; gap: 0.75rem; }
+.clock { color: var(--muted-foreground); font-size: var(--step--1); font-variant-numeric: tabular-nums; }
+
+.winner { font-size: var(--step-1); margin-bottom: 0.75rem; color: var(--muted-foreground); }
+
+@media (max-width: 48rem) {
+  .pad { grid-template-columns: repeat(5, 1fr); }
+  .race--three { grid-template-columns: 1fr; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cursor { transition: opacity 300ms; }
+}
+
+/* ---------- Fit the race on one screen ----------
+   The race uses the full width and sizes each board from the window height, so all three
+   boards, the number pad and the stats fit without scrolling on a laptop or desktop. */
+
+.app:has(.race--three) { max-width: 96rem; padding-top: 1rem; padding-bottom: 1rem; }
+.app:has(.race--three) .app-header { padding-bottom: 0.75rem; margin-bottom: 1rem; }
+.race-head:has(+ .race--three) { margin-bottom: 0.75rem; }
+.race-head:has(+ .race--three) h2 { font-size: var(--step-1); }
+
+.race--three .panel { padding: 1rem; }
+.race--three .panel-head { margin-bottom: 0.75rem; }
+.race--three .panel > .board-wrap { max-width: min(100%, calc(100vh - 19rem)); margin-bottom: 0.75rem; }
+.race--three .pad { max-width: min(100%, calc(100vh - 19rem)); margin-top: 0.5rem; }
+.race--three .pad-key { height: 2.25rem; }
+.race--three .hint { margin-top: 0.5rem; }
+.race--three .board-wrap--9 { --cell-font: clamp(0.875rem, 1.9vh, 1.125rem); }
+
+.stats--compact { grid-template-columns: repeat(3, minmax(0, 1fr)); font-size: var(--step--1); }
+.stats--compact dd { font-size: var(--step-0); }
+
+.results-chart { max-width: 32rem; margin-bottom: 2rem; }
