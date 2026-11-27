@@ -32,9 +32,9 @@ test('you win the easy board by filling every cell before the computers move', a
     fireEvent.keyDown(cell, { key: String(answer[r][c]) });
   }
 
-  expect(await screen.findByRole('heading', { name: `You won with ${blanks.length} correct cells` }, { timeout: 4000 })).toBeInTheDocument();
-  expect(screen.getByText('The finished board is correct.')).toBeInTheDocument();
-  expect(screen.getByText('How hard each computer had to search')).toBeInTheDocument();
+  expect(await screen.findByText(`You won the board with ${blanks.length} correct cells.`, {}, { timeout: 4000 })).toBeInTheDocument();
+  expect(screen.getByText('Searches needed to solve this puzzle')).toBeInTheDocument();
+  expect(screen.getByText(`${blanks.length} of ${blanks.length}`)).toBeInTheDocument();
 });
 
 test('the computers move their cursors and fill the board when you do nothing', async () => {
@@ -50,7 +50,7 @@ test('the computers move their cursors and fill the board when you do nothing', 
   expect(document.querySelectorAll('.cursor--wait')).toHaveLength(2);
 
   let placedByComputer = false;
-  for (let i = 0; i < 120 && !screen.queryByRole('heading', { name: /won|tie/ }); i++) {
+  for (let i = 0; i < 120 && !screen.queryByText(/won the board|A tie/); i++) {
     await act(async () => { jest.advanceTimersByTime(1000); });
     if (within(grid).queryAllByRole('gridcell', { name: /placed by (Classical|Quantum)/ }).length) {
       placedByComputer = true;
@@ -58,12 +58,12 @@ test('the computers move their cursors and fill the board when you do nothing', 
   }
 
   expect(placedByComputer).toBe(true);
-  const heading = screen.getByRole('heading', { name: /won|tie/ });
-  expect(heading.textContent).not.toMatch(/^You won/);
+  expect(screen.getByText(/won the board|A tie/).textContent).not.toMatch(/^You won/);
 
   // Every blank went to one of the computers; you placed nothing.
   const rows = within(screen.getByRole('table')).getAllByRole('row').slice(1);
-  const placed = rows.map(row => Number(within(row).getAllByRole('cell')[0].textContent));
+  // "Correct cells" column reads "<correct> of <placed>".
+  const placed = rows.map(row => Number(within(row).getAllByRole('cell')[2].textContent.split(' of ')[1]));
   expect(placed[0]).toBe(0);
   expect(placed[1] + placed[2]).toBe(blanks);
 });

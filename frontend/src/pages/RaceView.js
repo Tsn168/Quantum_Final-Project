@@ -10,7 +10,7 @@
 import React, { useCallback, useEffect, useReducer, useRef, useState } from 'react';
 import SharedBoard from '../components/SharedBoard';
 import NumberPad from '../components/NumberPad';
-import Scoreboard from '../components/Scoreboard';
+import SolverPanel from '../components/SolverPanel';
 import { solveGame } from '../api/client';
 import { BOTS } from '../players';
 
@@ -176,34 +176,26 @@ function RaceView({ game, onHumanComplete }) {
   }, [finished]);
 
   const score = tally(cells, answerKey(solve));
-  const status = who => {
-    if (failed) return 'No response';
-    if (!solve) return 'Solving the puzzle…';
-    if (solve[who]?.status !== 'done') return 'Could not finish';
-    return cursors[who] ? 'Placing numbers' : 'Done';
-  };
-
   const title = game.level === 'easy' ? 'Easy 4×4' : 'Hard 9×9';
   const left = emptyCells(cells.board).length;
+  const selectedOwner = selected && cells.owner[selected[0]][selected[1]];
 
   return (
-    <section className="race">
-      <header className="race-head">
-        <div>
-          <h1>{title}</h1>
-          <p>
-            Click a cell and type a number. Every correct number you place before
-            the computers do is yours.
-          </p>
-        </div>
-        <div className="race-meta">
-          <Clock startedAt={startedAt.current} running={!finished} />
-          <span className="cells-left">{left} {left === 1 ? 'cell' : 'cells'} left</span>
-        </div>
-      </header>
+    <section>
+      <div className="race-head">
+        <h2>{title}</h2>
+        <p>Pick a cell and type a number. The computers fill cells too; most correct numbers wins.</p>
+      </div>
 
-      <div className="race-body">
-        <div className="race-board">
+      <div className="race">
+        <div className="panel">
+          <div className="panel-head">
+            <h3>You</h3>
+            <span className="race-meta">
+              <Clock startedAt={startedAt.current} running={!finished} />
+              <span className="badge badge-outline">{score.you.claimed} placed, {left} left</span>
+            </span>
+          </div>
           <SharedBoard
             board={cells.board}
             owner={cells.owner}
@@ -217,17 +209,19 @@ function RaceView({ game, onHumanComplete }) {
           />
           <NumberPad
             size={size}
-            disabled={!selected || finished || !['you', null].includes(cells.owner[selected[0]][selected[1]])}
+            disabled={!selected || finished || !['you', null].includes(selectedOwner)}
             onDigit={d => selected && handleInput(selected[0], selected[1], d)}
           />
+          <p className="hint">
+            The computers already know the answer once they finish solving, but they place
+            one number at a time so you can keep up. Their real speed is on the results screen.
+          </p>
         </div>
 
-        <Scoreboard
-          score={score}
-          status={status}
-          totalCells={emptyCells(game.board).length}
-          solve={solve}
-        />
+        <div className="solvers">
+          <SolverPanel playerType="classical" result={solve?.classical} failed={failed} cells={score.classical.claimed} />
+          <SolverPanel playerType="quantum" result={solve?.quantum} failed={failed} cells={score.quantum.claimed} />
+        </div>
       </div>
     </section>
   );

@@ -20,7 +20,7 @@ const SCREENS = {
 function BrandMark() {
   return (
     <span className="brand-mark" aria-hidden="true">
-      <span /><span /><span />
+      <span /><span /><span /><span />
     </span>
   );
 }
@@ -53,7 +53,7 @@ function App() {
       setScreen(SCREENS.RESULTS);
     } catch (err) {
       console.error('Failed to submit board:', err);
-      setError('The finished board was not sent. Check the backend is running, then choose New game.');
+      setError('The finished board was not sent. Check the backend is running, then choose Change level.');
     }
   }
 
@@ -70,7 +70,7 @@ function App() {
       <header className="app-header">
         <span className="brand"><BrandMark /> QuSud Race</span>
         {screen !== SCREENS.SELECT && (
-          <button className="btn btn-ghost" onClick={handlePlayAgain}>New game</button>
+          <button className="btn btn-ghost" onClick={handlePlayAgain}>Change level</button>
         )}
       </header>
 
