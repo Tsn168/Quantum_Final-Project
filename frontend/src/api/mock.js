@@ -2,52 +2,9 @@
 // Owner: Reach
 // Fake backend that returns exactly the shapes in docs/api-contract.md.
 // Lets the frontend run before the real backend exists. Numbers here are placeholders,
-// not measurements. Puzzles were generated with py-sudoku and have exactly one solution.
+// not measurements. Each game gets a fresh puzzle from src/sudoku.js with exactly one solution.
 
-const PUZZLES = {
-  easy: {
-    size: 4,
-    box: [2, 2],
-    board: [
-      [2, 3, 0, 4],
-      [0, 0, 2, 3],
-      [4, 1, 0, 2],
-      [3, 2, 4, 1],
-    ],
-    solution: [
-      [2, 3, 1, 4],
-      [1, 4, 2, 3],
-      [4, 1, 3, 2],
-      [3, 2, 4, 1],
-    ],
-  },
-  hard: {
-    size: 9,
-    box: [3, 3],
-    board: [
-      [4, 1, 0, 0, 0, 0, 5, 0, 8],
-      [5, 7, 8, 4, 3, 1, 0, 0, 0],
-      [6, 0, 9, 0, 0, 8, 0, 0, 0],
-      [1, 3, 0, 0, 8, 0, 0, 5, 6],
-      [0, 0, 0, 2, 6, 0, 0, 1, 0],
-      [0, 9, 6, 3, 1, 5, 4, 8, 7],
-      [0, 4, 1, 0, 2, 0, 7, 6, 5],
-      [0, 5, 7, 0, 0, 0, 9, 0, 0],
-      [9, 0, 0, 1, 0, 0, 0, 4, 0],
-    ],
-    solution: [
-      [4, 1, 3, 6, 9, 2, 5, 7, 8],
-      [5, 7, 8, 4, 3, 1, 6, 9, 2],
-      [6, 2, 9, 5, 7, 8, 1, 3, 4],
-      [1, 3, 4, 7, 8, 9, 2, 5, 6],
-      [7, 8, 5, 2, 6, 4, 3, 1, 9],
-      [2, 9, 6, 3, 1, 5, 4, 8, 7],
-      [8, 4, 1, 9, 2, 3, 7, 6, 5],
-      [3, 5, 7, 8, 4, 6, 9, 2, 1],
-      [9, 6, 2, 1, 5, 7, 8, 4, 3],
-    ],
-  },
-};
+import { generatePuzzle } from '../sudoku';
 
 const sessions = {};
 const delay = ms => new Promise(resolve => setTimeout(resolve, ms));
@@ -119,8 +76,7 @@ function quantumResult(level, solution) {
 
 export async function createGame(level) {
   await delay(400);
-  const puzzle = PUZZLES[level];
-  if (!puzzle) throw new Error(`Unknown level: ${level}`);
+  const puzzle = generatePuzzle(level);
   const gameId = Math.random().toString(36).slice(2, 8);
   sessions[gameId] = { level, solution: puzzle.solution, human: null, solve: null };
   return { game_id: gameId, level, size: puzzle.size, box: puzzle.box, board: copy(puzzle.board) };

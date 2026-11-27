@@ -1,29 +1,69 @@
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen, fireEvent, act, within } from '@testing-library/react';
 import App from './App';
+import { solve } from './sudoku';
 
-// Full Easy game against the mock backend (src/api/mock.js):
-// pick Easy → solvers finish → fill the 4 empty cells → results screen.
-test('plays an easy game end to end with the mock backend', async () => {
+// Read the shared board back from the cells' labels ("Row 1, column 3: 4" or ": empty").
+function readBoard(grid) {
+  const cells = within(grid).getAllByRole('gridcell');
+  const size = Math.sqrt(cells.length);
+  const board = Array.from({ length: size }, () => Array(size).fill(0));
+  cells.forEach(cell => {
+    const [, r, c, v] = cell.getAttribute('aria-label').match(/Row (\d+), column (\d+): (\w+)/);
+    board[r - 1][c - 1] = v === 'empty' ? 0 : Number(v);
+  });
+  return board;
+}
+
+afterEach(() => jest.useRealTimers());
+
+test('you win the easy board by filling every cell before the computers move', async () => {
   render(<App />);
-
   fireEvent.click(screen.getByRole('button', { name: /Easy/ }));
-  expect(await screen.findByText('Easy 4×4')).toBeInTheDocument();
 
-  // Classical + quantum panels both finish.
-  expect(await screen.findAllByText('Finished', {}, { timeout: 3000 })).toHaveLength(2);
-  expect(screen.getByText(/Measured answers.*ideal simulator/)).toBeInTheDocument();
+  const grid = await screen.findByRole('grid', { name: 'Shared Sudoku board' });
+  const board = readBoard(grid);
+  const answer = solve(board, [2, 2]);
+  const blanks = board.flatMap((row, r) => row.map((v, c) => (v === 0 ? [r, c] : null))).filter(Boolean);
+  expect(blanks.length).toBeGreaterThanOrEqual(6);
 
-  // Mock easy puzzle blanks: (1,3)=1, (2,1)=1, (2,2)=4, (3,3)=3 (1-based).
-  fireEvent.change(screen.getByLabelText('cell 1-3'), { target: { value: '1' } });
-  // One entry must not end the game (empty cells are 0, not '').
-  expect(screen.queryByText('Searches needed to solve this puzzle')).not.toBeInTheDocument();
-  fireEvent.change(screen.getByLabelText('cell 2-1'), { target: { value: '1' } });
-  fireEvent.change(screen.getByLabelText('cell 2-2'), { target: { value: '4' } });
-  fireEvent.change(screen.getByLabelText('cell 3-3'), { target: { value: '3' } });
+  for (const [r, c] of blanks) {
+    const cell = within(grid).getByRole('gridcell', { name: new RegExp(`^Row ${r + 1}, column ${c + 1}:`) });
+    fireEvent.click(cell);
+    fireEvent.keyDown(cell, { key: String(answer[r][c]) });
+  }
 
-  expect(await screen.findByText('Searches needed to solve this puzzle')).toBeInTheDocument();
-  expect(screen.getByText('128')).toBeInTheDocument();
-  expect(screen.getByText('12')).toBeInTheDocument();
-  expect(screen.getByText(/10\.7× fewer searches/)).toBeInTheDocument();
-  expect(screen.getAllByText('Correct')).toHaveLength(3);
+  expect(await screen.findByRole('heading', { name: `You won with ${blanks.length} correct cells` }, { timeout: 4000 })).toBeInTheDocument();
+  expect(screen.getByText('The finished board is correct.')).toBeInTheDocument();
+  expect(screen.getByText('How hard each computer had to search')).toBeInTheDocument();
+});
+
+test('the computers move their cursors and fill the board when you do nothing', async () => {
+  jest.useFakeTimers();
+  render(<App />);
+  fireEvent.click(screen.getByRole('button', { name: /Easy/ }));
+  await act(async () => { jest.advanceTimersByTime(500); });
+
+  const grid = screen.getByRole('grid', { name: 'Shared Sudoku board' });
+  const blanks = readBoard(grid).flat().filter(v => v === 0).length;
+
+  // Both cursors are on the board while the solvers work.
+  expect(document.querySelectorAll('.cursor--wait')).toHaveLength(2);
+
+  let placedByComputer = false;
+  for (let i = 0; i < 120 && !screen.queryByRole('heading', { name: /won|tie/ }); i++) {
+    await act(async () => { jest.advanceTimersByTime(1000); });
+    if (within(grid).queryAllByRole('gridcell', { name: /placed by (Classical|Quantum)/ }).length) {
+      placedByComputer = true;
+    }
+  }
+
+  expect(placedByComputer).toBe(true);
+  const heading = screen.getByRole('heading', { name: /won|tie/ });
+  expect(heading.textContent).not.toMatch(/^You won/);
+
+  // Every blank went to one of the computers; you placed nothing.
+  const rows = within(screen.getByRole('table')).getAllByRole('row').slice(1);
+  const placed = rows.map(row => Number(within(row).getAllByRole('cell')[0].textContent));
+  expect(placed[0]).toBe(0);
+  expect(placed[1] + placed[2]).toBe(blanks);
 });

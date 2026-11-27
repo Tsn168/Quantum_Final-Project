@@ -1,6 +1,6 @@
 // App.js
 // Root component — manages which screen is shown and game session state.
-// Flow: LevelSelect → (loading puzzle) → RaceView → Results
+// Flow: LevelSelect → (loading puzzle) → RaceView (shared board) → Results
 // All backend calls go through src/api/client.js (see docs/api-contract.md).
 
 import React, { useState } from 'react';
@@ -20,7 +20,7 @@ const SCREENS = {
 function BrandMark() {
   return (
     <span className="brand-mark" aria-hidden="true">
-      <span /><span /><span /><span />
+      <span /><span /><span />
     </span>
   );
 }
@@ -29,6 +29,7 @@ function App() {
   const [screen,  setScreen]  = useState(SCREENS.SELECT);
   const [game,    setGame]    = useState(null);   // POST /game response
   const [results, setResults] = useState(null);   // GET /game/{id}/results response
+  const [score,   setScore]   = useState(null);   // cells each player placed, from RaceView
   const [error,   setError]   = useState(null);
 
   async function handleSelectLevel(level) {
@@ -44,14 +45,15 @@ function App() {
     }
   }
 
-  async function handleHumanComplete(board, timeMs) {
+  async function handleHumanComplete(board, timeMs, tally) {
+    setScore(tally);
     try {
       await submitHuman(game.game_id, board, timeMs);
       setResults(await getResults(game.game_id));
       setScreen(SCREENS.RESULTS);
     } catch (err) {
       console.error('Failed to submit board:', err);
-      setError('Your board was not sent. Check the backend is running, then fill in any cell again.');
+      setError('The finished board was not sent. Check the backend is running, then choose New game.');
     }
   }
 
@@ -59,6 +61,7 @@ function App() {
     setScreen(SCREENS.SELECT);
     setGame(null);
     setResults(null);
+    setScore(null);
     setError(null);
   }
 
@@ -67,7 +70,7 @@ function App() {
       <header className="app-header">
         <span className="brand"><BrandMark /> QuSud Race</span>
         {screen !== SCREENS.SELECT && (
-          <button className="btn btn-ghost" onClick={handlePlayAgain}>Change level</button>
+          <button className="btn btn-ghost" onClick={handlePlayAgain}>New game</button>
         )}
       </header>
 
@@ -86,7 +89,7 @@ function App() {
       )}
 
       {screen === SCREENS.RESULTS && (
-        <Results results={results} onPlayAgain={handlePlayAgain} />
+        <Results results={results} score={score} onPlayAgain={handlePlayAgain} />
       )}
     </div>
   );

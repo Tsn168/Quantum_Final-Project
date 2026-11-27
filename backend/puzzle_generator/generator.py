@@ -38,7 +38,9 @@ def _make_solution(size: int, rng: random.Random) -> list[list[int]]:
 
 def generate_puzzle(difficulty: str) -> dict[str, list[list[int]]]:
     """Generate a fresh puzzle; ``difficulty`` is ``easy`` (4x4) or ``hard`` (9x9)."""
-    levels = {"easy": (4, (7, 10)), "hard": (9, (36, 42))}
+    # Hard keeps 24-28 clues so the player starts from fewer numbers; easy stays
+    # at 7-10 because the Grover circuit is sized for that many blanks.
+    levels = {"easy": (4, (7, 10)), "hard": (9, (24, 28))}
     if not isinstance(difficulty, str) or difficulty.lower() not in levels:
         raise ValueError("difficulty must be either 'easy' or 'hard'.")
 
