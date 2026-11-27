@@ -51,9 +51,9 @@ function LevelSelect({ onSelectLevel }) {
       <div className="intro">
         <h1>Solve a Sudoku before the computers do</h1>
         <p>
-          You share one board with a classical solver and a quantum algorithm. Whoever
-          places the most correct numbers wins, and at the end you see how many searches
-          each computer needed.
+          You, a classical solver and a quantum algorithm each solve the same puzzle on
+          your own boards. First to finish correctly wins, and at the end you see how many
+          searches each computer needed.
         </p>
       </div>
 

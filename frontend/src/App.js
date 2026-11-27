@@ -1,6 +1,6 @@
 // App.js
 // Root component — manages which screen is shown and game session state.
-// Flow: LevelSelect → (loading puzzle) → RaceView (shared board) → Results
+// Flow: LevelSelect → (loading puzzle) → RaceView (three boards) → Results
 // All backend calls go through src/api/client.js (see docs/api-contract.md).
 
 import React, { useState } from 'react';
@@ -29,7 +29,7 @@ function App() {
   const [screen,  setScreen]  = useState(SCREENS.SELECT);
   const [game,    setGame]    = useState(null);   // POST /game response
   const [results, setResults] = useState(null);   // GET /game/{id}/results response
-  const [score,   setScore]   = useState(null);   // cells each player placed, from RaceView
+  const [race,    setRace]    = useState(null);   // when each player's board was full, from RaceView
   const [error,   setError]   = useState(null);
 
   async function handleSelectLevel(level) {
@@ -45,8 +45,8 @@ function App() {
     }
   }
 
-  async function handleHumanComplete(board, timeMs, tally) {
-    setScore(tally);
+  async function handleHumanComplete(board, timeMs, raceTimes) {
+    setRace(raceTimes);
     try {
       await submitHuman(game.game_id, board, timeMs);
       setResults(await getResults(game.game_id));
@@ -61,7 +61,7 @@ function App() {
     setScreen(SCREENS.SELECT);
     setGame(null);
     setResults(null);
-    setScore(null);
+    setRace(null);
     setError(null);
   }
 
@@ -89,7 +89,7 @@ function App() {
       )}
 
       {screen === SCREENS.RESULTS && (
-        <Results results={results} score={score} onPlayAgain={handlePlayAgain} />
+        <Results results={results} race={race} onPlayAgain={handlePlayAgain} />
       )}
     </div>
   );

@@ -1,61 +1,35 @@
 // RaceView.js
 // Owner: Reach
-// Multiplayer race on one shared board: you, the classical computer and the quantum algorithm
-// all claim empty cells. The board fills up; whoever placed the most correct numbers wins.
+// Three-way race: you, the classical computer and the quantum algorithm each get their own
+// copy of the same puzzle and fill it at the same time. Whoever finishes their board
+// correctly first wins.
 //
-// The computers play from their real SolverResult (POST /game/{id}/solve). Their moves are
-// paced to human speed so the race is playable; the real search counts and times are shown
-// on the results screen.
+// The computers play from their real SolverResult (POST /game/{id}/solve). They fill their
+// boards one cell at a time, at human speed, with a live cursor, so the race is watchable;
+// their real search counts and times are on the results screen.
 
-import React, { useCallback, useEffect, useReducer, useRef, useState } from 'react';
-import SharedBoard from '../components/SharedBoard';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
+import SudokuBoard from '../components/SudokuBoard';
 import NumberPad from '../components/NumberPad';
 import SolverPanel from '../components/SolverPanel';
 import { solveGame } from '../api/client';
 import { BOTS } from '../players';
 
-// Milliseconds per cell for the faster computer; the slower one takes 30% longer.
+// Milliseconds per cell for the computer that needed fewer searches; the other takes 30% longer.
 const PACE = { easy: 3200, hard: 4200 };
-const LABELS = { you: 'You', classical: 'Classical', quantum: 'Quantum' };
+const LABELS = { classical: 'Classical', quantum: 'Quantum' };
 
-function initCells(puzzle) {
-  return {
-    board: puzzle.map(row => [...row]),
-    owner: puzzle.map(row => row.map(v => (v === 0 ? null : 'given'))),
-  };
-}
-
-// Only empty cells can be claimed; you may also change or clear your own cells.
-function cellsReducer(state, { r, c, digit, who }) {
-  const current = state.owner[r][c];
-  const allowed = who === 'you' ? current === null || current === 'you' : state.board[r][c] === 0;
-  if (!allowed) return state;
-  const board = state.board.map(row => [...row]);
-  const owner = state.owner.map(row => [...row]);
-  board[r][c] = digit;
-  owner[r][c] = digit === 0 ? null : who;
-  return { board, owner };
-}
-
+const copy = board => board.map(row => [...row]);
 const emptyCells = board =>
   board.flatMap((row, r) => row.map((v, c) => (v === 0 ? [r, c] : null))).filter(Boolean);
 
-// The answer key comes from whichever computer solved the puzzle correctly.
-function answerKey(solve) {
-  if (solve?.classical?.correct && solve.classical.solution) return solve.classical.solution;
-  if (solve?.quantum?.correct && solve.quantum.solution) return solve.quantum.solution;
-  return null;
-}
-
-export function tally(cells, solution) {
-  const result = {};
-  for (const id of ['you', ...BOTS]) result[id] = { claimed: 0, correct: solution ? 0 : null };
-  cells.owner.forEach((row, r) => row.forEach((who, c) => {
-    if (!result[who]) return;
-    result[who].claimed++;
-    if (solution && cells.board[r][c] === solution[r][c]) result[who].correct++;
-  }));
-  return result;
+function shuffle(list) {
+  const out = [...list];
+  for (let i = out.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [out[i], out[j]] = [out[j], out[i]];
+  }
+  return out;
 }
 
 function Clock({ startedAt, running }) {
@@ -75,24 +49,22 @@ function Clock({ startedAt, running }) {
 
 function RaceView({ game, onHumanComplete }) {
   const size = game.board.length;
-  const [cells, dispatch] = useReducer(cellsReducer, game.board, initCells);
+  const total = emptyCells(game.board).length;
+
+  const [board, setBoard] = useState(() => copy(game.board));          // your board
   const [selected, setSelected] = useState(null);
+  const [botBoards, setBotBoards] = useState(() => ({ classical: copy(game.board), quantum: copy(game.board) }));
+  const [cursors, setCursors] = useState({
+    // Parked above the board until their solver answers.
+    classical: { r: -0.5, c: 0, mode: 'wait' },
+    quantum:   { r: -0.5, c: 0, mode: 'wait' },
+  });
+  const [botDone, setBotDone] = useState({ classical: null, quantum: null });   // race ms when finished
+  const [yourTime, setYourTime] = useState(null);
   const [solve, setSolve] = useState(null);
   const [failed, setFailed] = useState(false);
   const [finished, setFinished] = useState(false);
-  const [cursors, setCursors] = useState({
-    // Parked on the top corners until their solver answers.
-    classical: { r: -0.5, c: 0, mode: 'wait' },
-    quantum:   { r: -0.5, c: size - 1, mode: 'wait' },
-  });
   const startedAt = useRef(Date.now());
-
-  // Timers read the latest state through refs.
-  const cellsRef = useRef(cells);
-  const selectedRef = useRef(selected);
-  const targetsRef = useRef({});
-  cellsRef.current = cells;
-  selectedRef.current = selected;
 
   useEffect(() => {
     let cancelled = false;
@@ -105,7 +77,7 @@ function RaceView({ game, onHumanComplete }) {
     return () => { cancelled = true; };
   }, [game.game_id]);
 
-  // Each computer plays once its result arrives.
+  // Each computer fills its own board once its result arrives.
   useEffect(() => {
     if (!solve) return;
     const timers = [];
@@ -123,106 +95,131 @@ function RaceView({ game, onHumanComplete }) {
       }
       const interval = PACE[game.level] * (i === fasterIndex ? 1 : 1.3);
 
-      const step = () => {
-        const { board } = cellsRef.current;
-        const sel = selectedRef.current;
-        const other = targetsRef.current[BOTS[1 - i]];
-        const open = emptyCells(board).filter(([r, c]) =>
-          !(sel && sel[0] === r && sel[1] === c) && !(other && other[0] === r && other[1] === c));
+      // Classical works through the board in reading order, like backtracking.
+      // Quantum fills cells in a random order and glances at other cells first.
+      const blanks = emptyCells(game.board);
+      const order = who === 'classical' ? blanks : shuffle(blanks);
 
-        if (open.length === 0) {
-          if (emptyCells(board).length === 0) { moveCursor(who, null); return; }
-          later(step, 400);   // only contested cells left; wait for them to free up
+      const step = k => {
+        if (k >= order.length) {
+          moveCursor(who, null);
+          setBotDone(prev => ({ ...prev, [who]: Date.now() - startedAt.current }));
           return;
         }
+        const target = order[k];
+        const rest = order.slice(k + 1);
+        const probes = who === 'quantum' && rest.length > 1 ? shuffle(rest).slice(0, 2) : [];
 
-        // Classical works through the board in order, like backtracking.
-        // Quantum looks at a couple of cells at random before it settles on one.
-        const pick = () => open[Math.floor(Math.random() * open.length)];
-        const target = who === 'classical' ? open[0] : pick();
-        const probes = who === 'quantum' && open.length > 2 ? [pick(), pick()] : [];
-        targetsRef.current[who] = target;
-
-        const jitter = 0.85 + Math.random() * 0.3;
-        const hop = (interval * jitter) / (probes.length + 2);
-        probes.forEach(([r, c], k) => later(() => moveCursor(who, { r, c, mode: 'move' }), hop * k));
+        const hop = (interval * (0.85 + Math.random() * 0.3)) / (probes.length + 2);
+        probes.forEach(([r, c], n) => later(() => moveCursor(who, { r, c, mode: 'move' }), hop * n));
         later(() => moveCursor(who, { r: target[0], c: target[1], mode: 'aim' }), hop * probes.length);
         later(() => {
           const [r, c] = target;
-          dispatch({ r, c, digit: result.solution[r][c], who });
-          targetsRef.current[who] = null;
+          setBotBoards(prev => {
+            const next = copy(prev[who]);
+            next[r][c] = result.solution[r][c];
+            return { ...prev, [who]: next };
+          });
           moveCursor(who, { r, c, mode: 'move' });
-          later(step, 80);   // let the board re-render before choosing the next cell
+          step(k + 1);
         }, hop * (probes.length + 1));
       };
 
-      later(step, 300 + i * 500);
+      later(() => step(0), 300 + i * 400);
     });
 
     return () => timers.forEach(clearTimeout);
-  }, [solve, game.level]);
+  }, [solve, game.level, game.board]);
 
-  // The race ends when every cell is filled and the solvers have answered
-  // (their answer is what your cells are checked against).
+  // Your race time is taken the moment your board is full.
   useEffect(() => {
-    if (finished || emptyCells(cells.board).length > 0 || (!solve && !failed)) return;
+    if (yourTime == null && emptyCells(board).length === 0) setYourTime(Date.now() - startedAt.current);
+  }, [board, yourTime]);
+
+  // The race ends when your board is full and the solvers have answered.
+  useEffect(() => {
+    if (finished || yourTime == null || (!solve && !failed)) return;
     setFinished(true);
     setCursors({});
-    onHumanComplete(cells.board, Date.now() - startedAt.current, tally(cells, answerKey(solve)));
-  }, [cells, finished, solve, failed, onHumanComplete]);
+    onHumanComplete(board, yourTime, { you: yourTime, ...botDone });
+  }, [finished, yourTime, solve, failed, board, botDone, onHumanComplete]);
 
   const handleInput = useCallback((r, c, digit) => {
-    if (!finished) dispatch({ r, c, digit, who: 'you' });
-  }, [finished]);
+    if (finished || game.board[r][c] !== 0) return;
+    setBoard(prev => {
+      const next = copy(prev);
+      next[r][c] = digit;
+      return next;
+    });
+  }, [finished, game.board]);
 
-  const score = tally(cells, answerKey(solve));
   const title = game.level === 'easy' ? 'Easy 4×4' : 'Hard 9×9';
-  const left = emptyCells(cells.board).length;
-  const selectedOwner = selected && cells.owner[selected[0]][selected[1]];
+  const yourFilled = total - emptyCells(board).length;
+  const selectedIsGiven = selected && game.board[selected[0]][selected[1]] !== 0;
 
   return (
     <section>
       <div className="race-head">
         <h2>{title}</h2>
-        <p>Pick a cell and type a number. The computers fill cells too; most correct numbers wins.</p>
+        <p>
+          Same puzzle, three boards. First to finish correctly wins. The computers fill
+          their boards at human speed; their real speed is on the results screen.
+        </p>
       </div>
 
-      <div className="race">
-        <div className="panel">
+      <div className="race race--three">
+        <div className="panel panel--you">
           <div className="panel-head">
             <h3>You</h3>
             <span className="race-meta">
               <Clock startedAt={startedAt.current} running={!finished} />
-              <span className="badge badge-outline">{score.you.claimed} placed, {left} left</span>
+              <span className="badge badge-outline">{yourFilled} of {total} cells</span>
             </span>
           </div>
-          <SharedBoard
-            board={cells.board}
-            owner={cells.owner}
+          <SudokuBoard
+            player="you"
+            label="Your Sudoku board"
+            puzzle={game.board}
+            board={board}
             box={game.box}
+            interactive
             selected={selected}
-            cursors={cursors}
-            labels={LABELS}
             onSelect={setSelected}
             onInput={handleInput}
             disabled={finished}
           />
           <NumberPad
             size={size}
-            disabled={!selected || finished || !['you', null].includes(selectedOwner)}
+            disabled={!selected || finished || selectedIsGiven}
             onDigit={d => selected && handleInput(selected[0], selected[1], d)}
           />
           <p className="hint">
-            The computers already know the answer once they finish solving, but they place
-            one number at a time so you can keep up. Their real speed is on the results screen.
+            Pick a cell, then type a number or use the pad. Numbers that break a rule turn red.
           </p>
         </div>
 
-        <div className="solvers">
-          <SolverPanel playerType="classical" result={solve?.classical} failed={failed} cells={score.classical.claimed} />
-          <SolverPanel playerType="quantum" result={solve?.quantum} failed={failed} cells={score.quantum.claimed} />
-        </div>
+        {BOTS.map(who => (
+          <SolverPanel
+            key={who}
+            playerType={who}
+            result={solve?.[who]}
+            failed={failed}
+            progress={{ filled: total - emptyCells(botBoards[who]).length, total }}
+            raceMs={botDone[who]}
+          >
+            <SudokuBoard
+              player={who}
+              label={`${LABELS[who]} computer's board`}
+              puzzle={game.board}
+              board={botBoards[who]}
+              box={game.box}
+              cursor={cursors[who]}
+              cursorLabel={LABELS[who]}
+            />
+          </SolverPanel>
+        ))}
       </div>
+
     </section>
   );
 }

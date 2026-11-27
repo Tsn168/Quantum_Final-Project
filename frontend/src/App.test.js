@@ -2,7 +2,7 @@ import { render, screen, fireEvent, act, within } from '@testing-library/react';
 import App from './App';
 import { solve } from './sudoku';
 
-// Read the shared board back from the cells' labels ("Row 1, column 3: 4" or ": empty").
+// Read a board back from its cells' labels ("Row 1, column 3: 4" or ": empty").
 function readBoard(grid) {
   const cells = within(grid).getAllByRole('gridcell');
   const size = Math.sqrt(cells.length);
@@ -14,56 +14,72 @@ function readBoard(grid) {
   return board;
 }
 
-afterEach(() => jest.useRealTimers());
-
-test('you win the easy board by filling every cell before the computers move', async () => {
-  render(<App />);
-  fireEvent.click(screen.getByRole('button', { name: /Easy/ }));
-
-  const grid = await screen.findByRole('grid', { name: 'Shared Sudoku board' });
+function fillYourBoard(grid) {
   const board = readBoard(grid);
   const answer = solve(board, [2, 2]);
-  const blanks = board.flatMap((row, r) => row.map((v, c) => (v === 0 ? [r, c] : null))).filter(Boolean);
-  expect(blanks.length).toBeGreaterThanOrEqual(6);
-
-  for (const [r, c] of blanks) {
+  board.forEach((row, r) => row.forEach((v, c) => {
+    if (v !== 0) return;
     const cell = within(grid).getByRole('gridcell', { name: new RegExp(`^Row ${r + 1}, column ${c + 1}:`) });
     fireEvent.click(cell);
     fireEvent.keyDown(cell, { key: String(answer[r][c]) });
-  }
+  }));
+}
 
-  expect(await screen.findByText(`You won the board with ${blanks.length} correct cells.`, {}, { timeout: 4000 })).toBeInTheDocument();
-  expect(screen.getByText('Searches needed to solve this puzzle')).toBeInTheDocument();
-  expect(screen.getByText(`${blanks.length} of ${blanks.length}`)).toBeInTheDocument();
+afterEach(() => jest.useRealTimers());
+
+test('each player gets their own board with the same puzzle', async () => {
+  render(<App />);
+  fireEvent.click(screen.getByRole('button', { name: /Easy/ }));
+
+  const yours     = await screen.findByRole('grid', { name: 'Your Sudoku board' });
+  const classical = screen.getByRole('grid', { name: "Classical computer's board" });
+  const quantum   = screen.getByRole('grid', { name: "Quantum computer's board" });
+
+  expect(readBoard(classical)).toEqual(readBoard(yours));
+  expect(readBoard(quantum)).toEqual(readBoard(yours));
+
+  // Typing on your board does not touch the computers' boards.
+  const empty = within(yours).getAllByRole('gridcell', { name: /empty/ })[0];
+  fireEvent.click(empty);
+  fireEvent.keyDown(empty, { key: '1' });
+  expect(readBoard(yours)).not.toEqual(readBoard(classical));
 });
 
-test('the computers move their cursors and fill the board when you do nothing', async () => {
+test('you win when you finish your board before the computers', async () => {
+  render(<App />);
+  fireEvent.click(screen.getByRole('button', { name: /Easy/ }));
+  fillYourBoard(await screen.findByRole('grid', { name: 'Your Sudoku board' }));
+
+  expect(await screen.findByText(/^You finished first, in/, {}, { timeout: 4000 })).toBeInTheDocument();
+  expect(screen.getByText('Searches needed to solve this puzzle')).toBeInTheDocument();
+  expect(screen.getAllByText('Still solving')).toHaveLength(2);
+});
+
+test('the computers fill their own boards with live cursors and can beat you', async () => {
   jest.useFakeTimers();
   render(<App />);
   fireEvent.click(screen.getByRole('button', { name: /Easy/ }));
   await act(async () => { jest.advanceTimersByTime(500); });
 
-  const grid = screen.getByRole('grid', { name: 'Shared Sudoku board' });
-  const blanks = readBoard(grid).flat().filter(v => v === 0).length;
-
-  // Both cursors are on the board while the solvers work.
+  // Both cursors wait above their boards while the solvers work.
   expect(document.querySelectorAll('.cursor--wait')).toHaveLength(2);
 
-  let placedByComputer = false;
-  for (let i = 0; i < 120 && !screen.queryByText(/won the board|A tie/); i++) {
+  const classical = screen.getByRole('grid', { name: "Classical computer's board" });
+  const quantum   = screen.getByRole('grid', { name: "Quantum computer's board" });
+  let sawMovingCursors = false;
+  for (let i = 0; i < 120 && screen.queryAllByText('Finished').length < 2; i++) {
     await act(async () => { jest.advanceTimersByTime(1000); });
-    if (within(grid).queryAllByRole('gridcell', { name: /placed by (Classical|Quantum)/ }).length) {
-      placedByComputer = true;
-    }
+    if (document.querySelectorAll('.cursor--move, .cursor--aim').length === 2) sawMovingCursors = true;
   }
 
-  expect(placedByComputer).toBe(true);
-  expect(screen.getByText(/won the board|A tie/).textContent).not.toMatch(/^You won/);
+  expect(sawMovingCursors).toBe(true);
+  expect(readBoard(classical).flat()).not.toContain(0);
+  expect(readBoard(quantum).flat()).not.toContain(0);
+  expect(document.querySelectorAll('.cursor')).toHaveLength(0);
 
-  // Every blank went to one of the computers; you placed nothing.
-  const rows = within(screen.getByRole('table')).getAllByRole('row').slice(1);
-  // "Correct cells" column reads "<correct> of <placed>".
-  const placed = rows.map(row => Number(within(row).getAllByRole('cell')[2].textContent.split(' of ')[1]));
-  expect(placed[0]).toBe(0);
-  expect(placed[1] + placed[2]).toBe(blanks);
+  // You finish last; a computer wins.
+  fillYourBoard(screen.getByRole('grid', { name: 'Your Sudoku board' }));
+  // Submitting and loading results are two chained requests, so advance time twice.
+  for (let i = 0; i < 3; i++) await act(async () => { jest.advanceTimersByTime(500); });
+  expect(screen.getByText(/^The (classical computer|quantum algorithm) finished first, in/)).toBeInTheDocument();
 });

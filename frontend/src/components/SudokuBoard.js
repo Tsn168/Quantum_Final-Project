@@ -1,13 +1,14 @@
-// SharedBoard.js
+// SudokuBoard.js
 // Owner: Reach
-// The one board everyone plays on. Each filled cell is tinted by whoever placed it,
-// and the two computers move named cursors that glide from cell to cell.
-// Keyboard: arrows move, 1–9 places a number, Backspace/Delete/0 clears your own cell.
+// One player's Sudoku board. Every player (you, classical, quantum) gets their own copy of
+// the same puzzle. Your board takes input; a computer's board is read-only and shows its
+// live cursor gliding from cell to cell as it fills the board.
+// Keyboard on your board: arrows move, 1–9 places a number, Backspace/Delete/0 clears.
 
 import React, { useRef } from 'react';
 import { canPlace } from '../sudoku';
 
-function Cursor({ who, label, cursor, size }) {
+function Cursor({ player, label, cursor, size }) {
   if (!cursor) return null;
   const style = {
     left: `${((cursor.c + 0.5) / size) * 100}%`,
@@ -16,7 +17,7 @@ function Cursor({ who, label, cursor, size }) {
   return (
     // Near the right edge the name tag sits to the left of the arrow so it stays on the board.
     <div
-      className={`cursor cursor--${who} cursor--${cursor.mode}${cursor.c >= size - 2 ? ' cursor--flip' : ''}`}
+      className={`cursor cursor--${player} cursor--${cursor.mode}${cursor.c >= size - 2 ? ' cursor--flip' : ''}`}
       style={style}
       aria-hidden="true"
     >
@@ -28,7 +29,11 @@ function Cursor({ who, label, cursor, size }) {
   );
 }
 
-function SharedBoard({ board, owner, box, selected, cursors, labels, onSelect, onInput, disabled }) {
+function SudokuBoard({
+  player, label, puzzle, board, box,
+  interactive = false, selected = null, onSelect, onInput, disabled = false,
+  cursor = null, cursorLabel,
+}) {
   const size = board.length;
   const [boxRows, boxCols] = box;
   const gridRef = useRef(null);
@@ -39,7 +44,7 @@ function SharedBoard({ board, owner, box, selected, cursors, labels, onSelect, o
   }
 
   function handleKeyDown(e) {
-    if (!selected || disabled) return;
+    if (!interactive || !selected || disabled) return;
     const [r, c] = selected;
     const moves = { ArrowUp: [-1, 0], ArrowDown: [1, 0], ArrowLeft: [0, -1], ArrowRight: [0, 1] };
     if (moves[e.key]) {
@@ -60,37 +65,38 @@ function SharedBoard({ board, owner, box, selected, cursors, labels, onSelect, o
     }
   }
 
-  // A bot's target cell gets a soft ring in its colour while its cursor is there.
-  const aimedBy = (r, c) =>
-    Object.entries(cursors).find(([, cur]) => cur && cur.mode === 'aim' && cur.r === r && cur.c === c)?.[0];
-
   return (
     <div className={`board-wrap board-wrap--${size}`}>
       <div
         ref={gridRef}
         className="board"
         role="grid"
-        aria-label="Shared Sudoku board"
+        aria-label={label}
         style={{ '--size': size }}
         onKeyDown={handleKeyDown}
       >
         {board.map((row, r) => (
           <div role="row" key={r} className="board-row">
             {row.map((value, c) => {
-              const who = owner[r][c];
-              const isSelected = selected && selected[0] === r && selected[1] === c;
-              const conflict = value !== 0 && who === 'you' && !canPlace(board, r, c, value, box);
-              const aim = aimedBy(r, c);
+              const given = puzzle[r][c] !== 0;
+              const isSelected = interactive && selected && selected[0] === r && selected[1] === c;
+              const conflict = value !== 0 && !given && !canPlace(board, r, c, value, box);
+              const aimed = cursor && cursor.mode === 'aim' && cursor.r === r && cursor.c === c;
               const classes = [
                 'cell',
-                who ? `cell--${who}` : 'cell--empty',
+                given ? 'cell--given' : value ? `cell--${player}` : 'cell--empty',
                 (c + 1) % boxCols === 0 && c < size - 1 ? 'box-right' : '',
                 (r + 1) % boxRows === 0 && r < size - 1 ? 'box-bottom' : '',
                 isSelected ? 'is-selected' : '',
                 conflict ? 'is-conflict' : '',
-                aim ? `is-aimed is-aimed--${aim}` : '',
+                aimed ? `is-aimed is-aimed--${player}` : '',
               ].join(' ');
-              const filledBy = who && who !== 'given' ? `, placed by ${labels[who]}` : '';
+              const name = `Row ${r + 1}, column ${c + 1}: ${value || 'empty'}`;
+              const text = value !== 0 ? value : '';
+
+              if (!interactive) {
+                return <div key={c} role="gridcell" className={classes} aria-label={name}>{text}</div>;
+              }
               return (
                 <button
                   key={c}
@@ -99,13 +105,13 @@ function SharedBoard({ board, owner, box, selected, cursors, labels, onSelect, o
                   data-cell={`${r}-${c}`}
                   className={classes}
                   tabIndex={isSelected || (!selected && r === 0 && c === 0) ? 0 : -1}
-                  aria-label={`Row ${r + 1}, column ${c + 1}: ${value || 'empty'}${filledBy}`}
+                  aria-label={name}
                   aria-selected={!!isSelected}
                   disabled={disabled}
                   onClick={() => onSelect([r, c])}
                   onFocus={() => onSelect([r, c])}
                 >
-                  {value !== 0 ? value : ''}
+                  {text}
                 </button>
               );
             })}
@@ -113,13 +119,13 @@ function SharedBoard({ board, owner, box, selected, cursors, labels, onSelect, o
         ))}
       </div>
 
-      <div className="cursor-layer">
-        {Object.entries(cursors).map(([who, cursor]) => (
-          <Cursor key={who} who={who} label={labels[who]} cursor={cursor} size={size} />
-        ))}
-      </div>
+      {cursor && (
+        <div className="cursor-layer">
+          <Cursor player={player} label={cursorLabel} cursor={cursor} size={size} />
+        </div>
+      )}
     </div>
   );
 }
 
-export default SharedBoard;
+export default SudokuBoard;

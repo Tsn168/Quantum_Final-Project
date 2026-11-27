@@ -1,11 +1,13 @@
 // Results.js
 // Owner: Reach
 // Results screen. Input: GET /game/{id}/results (see docs/api-contract.md).
-// Who placed the most correct cells on the shared board, then searches needed per solver;
-// real time is shown underneath, honestly.
+// Who finished their own board correctly first, then searches needed per solver;
+// the solvers' real compute time is shown in the table, honestly.
 
 import React from 'react';
 import RaceChart from '../components/RaceChart';
+import GroverChart from '../components/GroverChart';
+import QAOAChart from '../components/QAOAChart';
 import { formatMs, algorithmName } from '../format';
 
 function AnswerBadge({ player }) {
@@ -17,13 +19,19 @@ function AnswerBadge({ player }) {
 
 const NAMES = { you: 'You', classical: 'The classical computer', quantum: 'The quantum algorithm' };
 
-function winner(score) {
-  if (!score || score.you.correct == null) return null;
-  const best = Math.max(...Object.values(score).map(s => s.correct));
-  const top = Object.keys(NAMES).filter(id => score[id].correct === best);
-  const cells = `${best} correct ${best === 1 ? 'cell' : 'cells'}`;
-  if (top.length > 1) return `A tie at ${cells}.`;
-  return `${NAMES[top[0]]} won the board with ${cells}.`;
+// race = { you, classical, quantum }: ms from the start until that board was full (null = not yet).
+// Only boards finished correctly can win.
+function winner(race, results) {
+  if (!race) return null;
+  const correct = { you: results.human?.correct, classical: results.classical?.correct, quantum: results.quantum?.correct };
+  const finishers = Object.keys(NAMES)
+    .filter(id => race[id] != null && correct[id])
+    .sort((a, b) => race[a] - race[b]);
+  if (finishers.length === 0) return 'Nobody finished a correct board.';
+  const first = finishers[0];
+  return first === 'you'
+    ? `You finished first, in ${formatMs(race.you)}.`
+    : `${NAMES[first]} finished first, in ${formatMs(race[first])}.`;
 }
 
 function verdict(classical, quantum) {
@@ -35,15 +43,15 @@ function verdict(classical, quantum) {
   return 'Both solvers needed the same number of searches.';
 }
 
-function Results({ results, score, onPlayAgain }) {
+function Results({ results, race, onPlayAgain }) {
   if (!results) return null;
 
   const { level, human, classical, quantum } = results;
-  const cells = id => score?.[id] ? `${score[id].correct ?? '—'} of ${score[id].claimed}` : '—';
+  const raceTime = id => (race?.[id] != null ? formatMs(race[id]) : 'Still solving');
 
   return (
     <section className="results">
-      {winner(score) && <p className="winner">{winner(score)}</p>}
+      {winner(race, results) && <p className="winner">{winner(race, results)}</p>}
       <h2>Searches needed to solve this puzzle</h2>
 
       <RaceChart classical={classical} quantum={quantum} />
@@ -54,35 +62,42 @@ function Results({ results, score, onPlayAgain }) {
           <tr>
             <th>Player</th>
             <th className="method">Method</th>
-            <th className="num">Correct cells</th>
+            <th className="num">Race time</th>
             <th>Answer</th>
-            <th className="num">Real time</th>
+            <th className="num">Compute time</th>
           </tr>
         </thead>
         <tbody>
           <tr>
             <td>You</td>
             <td className="method">By hand</td>
-            <td className="num">{cells('you')}</td>
+            <td className="num">{raceTime('you')}</td>
             <td><AnswerBadge player={human} /></td>
-            <td className="num">{formatMs(human?.time_ms)}</td>
+            <td className="num">—</td>
           </tr>
           <tr>
             <td>Classical computer</td>
             <td className="method">{algorithmName(classical?.algorithm)}</td>
-            <td className="num">{cells('classical')}</td>
+            <td className="num">{raceTime('classical')}</td>
             <td><AnswerBadge player={classical} /></td>
             <td className="num">{formatMs(classical?.time_ms)}</td>
           </tr>
           <tr>
             <td>Quantum algorithm</td>
             <td className="method">{algorithmName(quantum?.algorithm)}</td>
-            <td className="num">{cells('quantum')}</td>
+            <td className="num">{raceTime('quantum')}</td>
             <td><AnswerBadge player={quantum} /></td>
             <td className="num">{formatMs(quantum?.time_ms)}</td>
           </tr>
         </tbody>
       </table>
+
+      {quantum?.quantum && (
+        <div className="results-chart">
+          <GroverChart counts={quantum.quantum.measurement_counts} mode={quantum.quantum.mode} />
+          <QAOAChart costHistory={quantum.quantum.cost_history} mode={quantum.quantum.mode} />
+        </div>
+      )}
 
       <p className="footnote">
         {level === 'easy'
