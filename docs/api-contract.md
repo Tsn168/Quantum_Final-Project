@@ -94,13 +94,38 @@ Everything the results screen needs.
 }
 ```
 
-## 6. `WS /ws/{game_id}` (later, optional)
+## 6. `WS /ws/{game_id}`
 
-Live progress for the race panels. Not needed for the first version.
+Live progress for the race panels. On connect the server sends one message per
+player with its current state (`"waiting"`, `"running"`, or finished), then one
+message for every change. `elapsed_ms` is time on the shared race clock.
 
 ```json
-{ "player": "quantum", "status": "running", "step": 7, "total_steps": 12 }
+{ "event": "race_started", "level": "easy", "elapsed_ms": 0.0 }
+{ "player": "quantum", "status": "running", "algorithm": "grover", "elapsed_ms": 2.8 }
+{ "player": "classical", "status": "done", "reason": null, "time_ms": 3.2,
+  "search_cost": { "metric": "checks", "value": 7 }, "elapsed_ms": 3.3 }
+{ "player": "human", "status": "done", "correct": true, "time_ms": 41250 }
 ```
+
+## Race rules (backend)
+
+- The race clock starts when `POST /game/{id}/solve` is first called — the same moment
+  the browser starts the human timer. Every `time_ms` is measured from that instant.
+- Calling `/solve` again joins the running race; it does not start a new one.
+- The human's `time_ms` is measured on the server; the value the browser sends is only
+  used if the race was never started.
+- The level picks the quantum algorithm on the server (easy → Grover, hard → QAOA).
+- Quantum solvers run in a separate process with a time limit (Grover 60 s, QAOA 120 s,
+  set by `QUSUD_GROVER_TIMEOUT` / `QUSUD_QAOA_TIMEOUT`). When it is exceeded the result is
+  `status: "did_not_finish", reason: "timeout"`. Crashes give `reason: "error: ..."`.
+- Grover can simulate at most 3 empty cells (4 needs 65 qubits; Aer allows 63). Extra empty
+  cells are filled by the classical solver first; `quantum.searched_cells` and
+  `quantum.prefilled_cells` say which cells Grover actually searched
+  (`QUSUD_GROVER_MAX_BLANKS`, default 3).
+- Grover `measurement_counts` are parsed by the backend: only the searched cells are kept,
+  in reading order, each digit d written as the 2-bit binary of d−1 (1→`00` … 4→`11`);
+  the top 16 bars are sent.
 
 ---
 

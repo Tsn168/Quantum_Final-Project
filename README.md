@@ -197,22 +197,22 @@ The backend modules use `easy` for 4×4 and `hard` for 9×9. Call `generate_puzz
 
 **Quantum integration**
 
-- [ ] In `backend/game_engine.py`, call `grover.run()` and `qaoa.run()` as async tasks and collect their result objects
-- [ ] Parse raw Qiskit measurement counts: extract the most-frequent bitstring, convert to digit assignments, attach qubit and depth metadata
-- [ ] Handle quantum timeouts: return `{ status: "did_not_finish", reason: "timeout" }` without crashing the race
+- [x] In `backend/game_engine.py`, call `grover.run()` and `qaoa.run()` as async tasks and collect their result objects
+- [x] Parse raw Qiskit measurement counts: extract the most-frequent bitstring, convert to digit assignments, attach qubit and depth metadata
+- [x] Handle quantum timeouts: return `{ status: "did_not_finish", reason: "timeout" }` without crashing the race
 
 **Backend API**
 
-- [ ] Build the FastAPI server with these endpoints:
+- [x] Build the FastAPI server with these endpoints:
   - `GET /levels` — list Easy / Hard with grid size and quantum algorithm used
   - `POST /game` — call the puzzle generator, create a session, return the fresh board
   - `POST /game/{id}/solve` — run Classical and Quantum solvers in parallel, return results
   - `POST /game/{id}/submit` — receive and validate the human's completed board
   - `GET /game/{id}/results` — return the three-way comparison data
-- [ ] Add WebSocket live updates so panels show real-time solver progress
-- [ ] Implement the fair race timer: all three clocks start at the same instant
-- [ ] Route Hard → QAOA and Easy → Grover at the API layer; enforce it so it cannot be bypassed
-- [ ] Ensure `POST /game` always calls the puzzle generator fresh — never reuse a previous session's board
+- [x] Add WebSocket live updates so panels show real-time solver progress
+- [x] Implement the fair race timer: all three clocks start at the same instant
+- [x] Route Hard → QAOA and Easy → Grover at the API layer; enforce it so it cannot be bypassed
+- [x] Ensure `POST /game` always calls the puzzle generator fresh — never reuse a previous session's board
 
 ---
 
